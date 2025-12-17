@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - To Do, Groceries, Settings Screens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #f5f5f4;
+            --bg-card: #ffffff;
+            --bg-card-alt: #e5e7eb;
+            --accent-primary: #ef4444;
+            --accent-secondary: #0ea5e9;
+            --accent-tertiary: #22c55e;
+            --accent-amber: #fbbf24;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --border-strong: #111827;
+            --border-width: 2px;
+            --tab-bar-bg: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: #e5e5e5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .page-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                );
+            pointer-events: none;
+        }
+
+        .screens-container {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+            z-index: 1;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .screen-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .screen-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            padding: 6px 16px;
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+        }
+
+        .device-frame {
+            width: 390px;
+            height: 844px;
+            background: var(--bg-app);
+            border: 4px solid var(--border-strong);
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 8px 8px 0 var(--border-strong);
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 30px;
+            background: var(--border-strong);
+            border-radius: 0 0 16px 16px;
+            z-index: 100;
+        }
+
+        .app-container {
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 90px;
+            scrollbar-width: none;
+        }
+
+        .app-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Header */
+        .app-header {
+            padding: 48px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-app);
+            border-bottom: var(--border-width) solid var(--border-strong);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-secondary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .settings-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .settings-btn:hover {
+            background: var(--text-primary);
+        }
+
+        .settings-btn:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .settings-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Sub Header */
+        .sub-header {
+            padding: 12px 16px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .page-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* Sub Tabs */
+        .sub-tabs {
+            display: flex;
+            background: var(--bg-card);
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .sub-tab {
+            flex: 1;
+            padding: 12px 16px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            background: var(--bg-card-alt);
+            border-right: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .sub-tab:last-child {
+            border-right: none;
+        }
+
+        .sub-tab.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 16px;
+        }
+
+        /* Summary Chips */
+        .tasks-summary {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .summary-chip {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .summary-chip .count {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .summary-chip.overdue {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .summary-chip.overdue .count {
+            color: white;
+        }
+
+        /* Section */
+        .section {
+            margin: 20px 0;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-left: 4px;
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            padding-left: 8px;
+        }
+
+        /* Task Card */
+        .task-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .task-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .task-checkbox-block {
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+        }
+
+        .task-checkbox {
+            width: 22px;
+            height: 22px;
+            border: var(--border-width) solid var(--border-strong);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .task-checkbox:hover {
+            background: var(--bg-card-alt);
+        }
+
+        .task-checkbox.checked {
+            background: var(--accent-tertiary);
+        }
+
+        .task-checkbox svg {
+            width: 14px;
+            height: 14px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+        }
+
+        .task-checkbox.checked svg {
+            opacity: 1;
+        }
+
+        .task-info {
+            flex: 1;
+            padding: 10px 12px;
+        }
+
+        .task-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .priority-block {
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            border-left: var(--border-width) solid var(--border-strong);
+        }
+
+        .priority-block.high { background: var(--accent-primary); color: white; }
+        .priority-block.medium { background: var(--accent-amber); color: var(--text-primary); }
+        .priority-block.low { background: var(--accent-tertiary); color: white; }
+
+        /* Activity Card */
+        .activity-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .activity-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .activity-time-block {
+            width: 70px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border-right: var(--border-width) solid var(--border-strong);
+        }
+
+        .activity-time {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .activity-period {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            opacity: 0.7;
+        }
+
+        .activity-info {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .activity-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .activity-location {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .category-block {
+            width: 8px;
+            flex-shrink: 0;
+        }
+
+        .category-block.work { background: var(--accent-secondary); }
+        .category-block.personal { background: var(--accent-primary); }
+        .category-block.health { background: var(--accent-tertiary); }
+        .category-block.family { background: var(--accent-amber); }
+
+        /* Grocery Items */
+        .store-selector {
+            padding: 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .store-selector:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .store-selector-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+
+        .store-selector-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .store-selector svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-primary);
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .category-group {
+            margin-bottom: 20px;
+        }
+
+        .category-header {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            padding-left: 4px;
+            border-left: 3px solid var(--accent-secondary);
+            padding-left: 8px;
+        }
+
+        .grocery-item {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .grocery-item:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .grocery-checkbox {
+            width: 20px;
+            height: 20px;
+            border: var(--border-width) solid var(--border-strong);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .grocery-checkbox.checked {
+            background: var(--accent-tertiary);
+        }
+
+        .grocery-checkbox svg {
+            width: 12px;
+            height: 12px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+        }
+
+        .grocery-checkbox.checked svg {
+            opacity: 1;
+        }
+
+        .grocery-name {
+            flex: 1;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .grocery-item.checked .grocery-name {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+
+        .grocery-quantity {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .grocery-item.checked .grocery-quantity {
+            opacity: 0.5;
+        }
+
+        /* Clear Button */
+        .clear-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 120ms;
+            margin-top: 16px;
+        }
+
+        .clear-btn:hover {
+            background: var(--text-primary);
+            color: var(--bg-card);
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        /* FAB */
+        .fab-container {
+            position: absolute;
+            bottom: 100px;
+            right: 16px;
+            z-index: 60;
+        }
+
+        .fab {
+            width: 52px;
+            height: 52px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .fab:hover {
+            box-shadow: 4px 4px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .fab svg {
+            width: 26px;
+            height: 26px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: var(--tab-bar-bg);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding: 8px 4px 0;
+            z-index: 80;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .tab-item.active {
+            background: var(--accent-amber);
+        }
+
+        .tab-item svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--bg-card-alt);
+            stroke-width: 2;
+            fill: none;
+            transition: all 120ms;
+        }
+
+        .tab-item.active svg {
+            stroke: var(--text-primary);
+        }
+
+        .tab-item span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--bg-card-alt);
+            transition: all 120ms;
+        }
+
+        .tab-item.active span {
+            color: var(--text-primary);
+        }
+
+        /* Settings Panel Styles */
+        .settings-header {
+            padding: 48px 16px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .back-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-primary);
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .settings-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .settings-content {
+            padding: 16px;
+        }
+
+        .settings-section {
+            margin-bottom: 24px;
+        }
+
+        .settings-section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            padding-left: 4px;
+            border-left: 3px solid var(--accent-primary);
+            padding-left: 8px;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+        }
+
+        .settings-row-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .theme-toggle {
+            display: flex;
+        }
+
+        .theme-option {
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .theme-option:first-child {
+            border-right: none;
+        }
+
+        .theme-option.active {
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .tab-manage-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 6px;
+        }
+
+        .drag-handle {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+            cursor: grab;
+        }
+
+        .tab-manage-name {
+            flex: 1;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .visibility-toggle, .default-toggle {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .visibility-toggle svg, .default-toggle svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .visibility-toggle.active svg {
+            stroke: var(--accent-secondary);
+        }
+
+        .default-toggle.active svg {
+            stroke: var(--accent-amber);
+            fill: var(--accent-amber);
+        }
+
+        .permission-option {
+            padding: 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .permission-option:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .permission-option.active {
+            border-color: var(--accent-secondary);
+            box-shadow: inset 0 0 0 2px var(--accent-secondary);
+        }
+
+        .permission-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .permission-radio {
+            width: 16px;
+            height: 16px;
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .permission-option.active .permission-radio {
+            background: var(--accent-secondary);
+        }
+
+        .permission-option.active .permission-radio::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--bg-card);
+        }
+
+        .permission-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .permission-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding-left: 24px;
+        }
+
+        .account-section {
+            margin-top: 24px;
+        }
+
+        .account-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 120ms;
+            margin-bottom: 8px;
+        }
+
+        .account-btn:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .account-btn.danger {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .account-btn.danger:hover {
+            background: var(--accent-primary);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <div class="screens-container">
+        <!-- TO DO SCREEN -->
+        <div class="screen-wrapper">
+            <div class="screen-label">To Do Screen</div>
+            <div class="device-frame">
+                <div class="device-notch"></div>
+
+                <div class="app-container">
+                    <!-- Header -->
+                    <header class="app-header">
+                        <div class="logo">
+                            <div class="logo-icon">
+                                <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            </div>
+                            <span class="logo-text">Life Org</span>
+                        </div>
+                        <div class="header-right">
+                            <div class="avatar">A</div>
+                            <button class="settings-btn">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            </button>
+                        </div>
+                    </header>
+
+                    <!-- Page Title -->
+                    <div class="sub-header">
+                        <div class="page-title">To Do</div>
+                    </div>
+
+                    <!-- Sub Tabs -->
+                    <div class="sub-tabs">
+                        <div class="sub-tab active">Tasks</div>
+                        <div class="sub-tab">Activities</div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="main-content">
+                        <!-- Summary Chips -->
+                        <div class="tasks-summary">
+                            <div class="summary-chip">
+                                <span class="count">5</span> Tasks
+                            </div>
+                            <div class="summary-chip">
+                                <span class="count">4</span> Activities
+                            </div>
+                            <div class="summary-chip overdue">
+                                <span class="count">1</span> Overdue
+                            </div>
+                        </div>
+
+                        <!-- Tasks Section -->
+                        <section class="section">
+                            <div class="section-header">
+                                <h2 class="section-title">Today's Tasks</h2>
+                            </div>
+
+                            <div class="task-card">
+                                <div class="task-checkbox-block">
+                                    <div class="task-checkbox">
+                                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </div>
+                                </div>
+                                <div class="task-info">
+                                    <div class="task-title">Review Q4 budget proposal</div>
+                                    <div class="task-meta">
+                                        <span>Due 5:00 PM</span>
+                                    </div>
+                                </div>
+                                <div class="priority-block high">High</div>
+                            </div>
+
+                            <div class="task-card">
+                                <div class="task-checkbox-block">
+                                    <div class="task-checkbox">
+                                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </div>
+                                </div>
+                                <div class="task-info">
+                                    <div class="task-title">Prepare grocery list for weekend</div>
+                                    <div class="task-meta">
+                                        <span>Due 8:00 PM</span>
+                                    </div>
+                                </div>
+                                <div class="priority-block medium">Med</div>
+                            </div>
+
+                            <div class="task-card">
+                                <div class="task-checkbox-block">
+                                    <div class="task-checkbox checked">
+                                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </div>
+                                </div>
+                                <div class="task-info">
+                                    <div class="task-title" style="text-decoration: line-through; opacity: 0.5;">Call dentist for appointment</div>
+                                    <div class="task-meta" style="opacity: 0.5;">
+                                        <span>Completed</span>
+                                    </div>
+                                </div>
+                                <div class="priority-block low">Low</div>
+                            </div>
+
+                            <div class="task-card">
+                                <div class="task-checkbox-block">
+                                    <div class="task-checkbox">
+                                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </div>
+                                </div>
+                                <div class="task-info">
+                                    <div class="task-title">Order birthday gift for Mom</div>
+                                    <div class="task-meta">
+                                        <span>Due 11:59 PM</span>
+                                    </div>
+                                </div>
+                                <div class="priority-block medium">Med</div>
+                            </div>
+
+                            <div class="task-card">
+                                <div class="task-checkbox-block">
+                                    <div class="task-checkbox">
+                                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </div>
+                                </div>
+                                <div class="task-info">
+                                    <div class="task-title">Reply to client emails</div>
+                                    <div class="task-meta">
+                                        <span>Due 3:00 PM</span>
+                                    </div>
+                                </div>
+                                <div class="priority-block high">High</div>
+                            </div>
+                        </section>
+                    </main>
+                </div>
+
+                <!-- FAB -->
+                <div class="fab-container">
+                    <button class="fab">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Tab Bar -->
+                <nav class="tab-bar">
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Today</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        <span>Ideas</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                        <span>Food</span>
+                    </div>
+                    <div class="tab-item active">
+                        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                        <span>Shop</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span>Cal</span>
+                    </div>
+                </nav>
+            </div>
+        </div>
+
+        <!-- GROCERIES SCREEN -->
+        <div class="screen-wrapper">
+            <div class="screen-label">Groceries Screen</div>
+            <div class="device-frame">
+                <div class="device-notch"></div>
+
+                <div class="app-container">
+                    <!-- Header -->
+                    <header class="app-header">
+                        <div class="logo">
+                            <div class="logo-icon">
+                                <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            </div>
+                            <span class="logo-text">Life Org</span>
+                        </div>
+                        <div class="header-right">
+                            <div class="avatar">A</div>
+                            <button class="settings-btn">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            </button>
+                        </div>
+                    </header>
+
+                    <!-- Page Title -->
+                    <div class="sub-header">
+                        <div class="page-title">Groceries</div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="main-content">
+                        <!-- Store Selector -->
+                        <div class="store-selector">
+                            <div>
+                                <div class="store-selector-label">Shopping At</div>
+                                <div class="store-selector-value">Whole Foods Market</div>
+                            </div>
+                            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+
+                        <!-- Produce Category -->
+                        <div class="category-group">
+                            <div class="category-header">Produce</div>
+                            <div class="grocery-item">
+                                <div class="grocery-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Organic Bananas</span>
+                                <span class="grocery-quantity">1 bunch</span>
+                            </div>
+                            <div class="grocery-item checked">
+                                <div class="grocery-checkbox checked">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Cherry Tomatoes</span>
+                                <span class="grocery-quantity">2 pints</span>
+                            </div>
+                            <div class="grocery-item">
+                                <div class="grocery-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Avocados</span>
+                                <span class="grocery-quantity">4 ct</span>
+                            </div>
+                            <div class="grocery-item">
+                                <div class="grocery-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Fresh Spinach</span>
+                                <span class="grocery-quantity">1 bag</span>
+                            </div>
+                        </div>
+
+                        <!-- Dairy Category -->
+                        <div class="category-group">
+                            <div class="category-header">Dairy</div>
+                            <div class="grocery-item checked">
+                                <div class="grocery-checkbox checked">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Whole Milk</span>
+                                <span class="grocery-quantity">1 gal</span>
+                            </div>
+                            <div class="grocery-item">
+                                <div class="grocery-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Greek Yogurt</span>
+                                <span class="grocery-quantity">6 pack</span>
+                            </div>
+                            <div class="grocery-item">
+                                <div class="grocery-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Sharp Cheddar Cheese</span>
+                                <span class="grocery-quantity">1 lb</span>
+                            </div>
+                        </div>
+
+                        <!-- Meat Category -->
+                        <div class="category-group">
+                            <div class="category-header">Meat</div>
+                            <div class="grocery-item">
+                                <div class="grocery-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Chicken Breast</span>
+                                <span class="grocery-quantity">2 lbs</span>
+                            </div>
+                            <div class="grocery-item">
+                                <div class="grocery-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Ground Beef</span>
+                                <span class="grocery-quantity">1 lb</span>
+                            </div>
+                        </div>
+
+                        <!-- Pantry Category -->
+                        <div class="category-group">
+                            <div class="category-header">Pantry</div>
+                            <div class="grocery-item checked">
+                                <div class="grocery-checkbox checked">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Pasta (Penne)</span>
+                                <span class="grocery-quantity">2 boxes</span>
+                            </div>
+                            <div class="grocery-item">
+                                <div class="grocery-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Olive Oil</span>
+                                <span class="grocery-quantity">1 bottle</span>
+                            </div>
+                            <div class="grocery-item">
+                                <div class="grocery-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="grocery-name">Canned Tomatoes</span>
+                                <span class="grocery-quantity">3 cans</span>
+                            </div>
+                        </div>
+
+                        <!-- Clear Completed Button -->
+                        <button class="clear-btn">Clear Completed Items</button>
+                    </main>
+                </div>
+
+                <!-- FAB -->
+                <div class="fab-container">
+                    <button class="fab">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Tab Bar -->
+                <nav class="tab-bar">
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Today</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        <span>Ideas</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                        <span>Food</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="tab-item active">
+                        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                        <span>Shop</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span>Cal</span>
+                    </div>
+                </nav>
+            </div>
+        </div>
+
+        <!-- SETTINGS SCREEN -->
+        <div class="screen-wrapper">
+            <div class="screen-label">Settings Screen</div>
+            <div class="device-frame">
+                <div class="device-notch"></div>
+
+                <div class="app-container">
+                    <!-- Settings Header -->
+                    <div class="settings-header">
+                        <button class="back-btn">
+                            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <h2 class="settings-title">Settings</h2>
+                    </div>
+
+                    <!-- Settings Content -->
+                    <div class="settings-content">
+                        <!-- Appearance Section -->
+                        <div class="settings-section">
+                            <div class="settings-section-title">Appearance</div>
+                            <div class="settings-row">
+                                <span class="settings-row-label">Theme</span>
+                                <div class="theme-toggle">
+                                    <span class="theme-option active">Light</span>
+                                    <span class="theme-option">Dark</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Manage Tabs Section -->
+                        <div class="settings-section">
+                            <div class="settings-section-title">Manage Tabs</div>
+                            <div class="tab-manage-item">
+                                <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                <span class="tab-manage-name">Today</span>
+                                <button class="visibility-toggle active">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button class="default-toggle active">
+                                    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </button>
+                            </div>
+                            <div class="tab-manage-item">
+                                <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                <span class="tab-manage-name">Ideas</span>
+                                <button class="visibility-toggle active">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button class="default-toggle">
+                                    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </button>
+                            </div>
+                            <div class="tab-manage-item">
+                                <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                <span class="tab-manage-name">Food</span>
+                                <button class="visibility-toggle active">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button class="default-toggle">
+                                    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </button>
+                            </div>
+                            <div class="tab-manage-item">
+                                <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                <span class="tab-manage-name">Tasks</span>
+                                <button class="visibility-toggle active">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button class="default-toggle">
+                                    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </button>
+                            </div>
+                            <div class="tab-manage-item">
+                                <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                <span class="tab-manage-name">Shop</span>
+                                <button class="visibility-toggle active">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button class="default-toggle">
+                                    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </button>
+                            </div>
+                            <div class="tab-manage-item">
+                                <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                <span class="tab-manage-name">Calendar</span>
+                                <button class="visibility-toggle active">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button class="default-toggle">
+                                    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Household Permissions Section -->
+                        <div class="settings-section">
+                            <div class="settings-section-title">Household Permissions</div>
+                            <div class="permission-option active">
+                                <div class="permission-header">
+                                    <div class="permission-radio"></div>
+                                    <span class="permission-name">Collaborative</span>
+                                </div>
+                                <p class="permission-desc">All members can add, edit, and complete any items</p>
+                            </div>
+                            <div class="permission-option">
+                                <div class="permission-header">
+                                    <div class="permission-radio"></div>
+                                    <span class="permission-name">Strict</span>
+                                </div>
+                                <p class="permission-desc">Members can only modify their own items</p>
+                            </div>
+                        </div>
+
+                        <!-- Account Section -->
+                        <div class="settings-section account-section">
+                            <div class="settings-section-title">Account</div>
+                            <button class="account-btn">Edit Profile</button>
+                            <button class="account-btn">Manage Household Members</button>
+                            <button class="account-btn">Privacy & Data</button>
+                            <button class="account-btn danger">Sign Out</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Bar -->
+                <nav class="tab-bar">
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Today</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        <span>Ideas</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                        <span>Food</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                        <span>Shop</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span>Cal</span>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

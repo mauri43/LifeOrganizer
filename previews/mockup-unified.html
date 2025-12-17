@@ -1,0 +1,3368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Neo-Brutalist Design v2 (Unified)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #f5f5f4;
+            --bg-card: #ffffff;
+            --bg-card-alt: #e5e7eb;
+            --accent-primary: #ef4444;
+            --accent-secondary: #0ea5e9;
+            --accent-tertiary: #22c55e;
+            --accent-amber: #fbbf24;
+            --accent-purple: #8B5CF6;
+            --accent-pink: #ec4899;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --border-strong: #111827;
+            --border-width: 2px;
+            --tab-bar-bg: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: #e5e5e5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .page-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(0,0,0,0.03) 40px, rgba(0,0,0,0.03) 41px),
+                repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,0,0,0.03) 40px, rgba(0,0,0,0.03) 41px);
+            pointer-events: none;
+        }
+
+        .device-frame {
+            width: 430px;
+            height: 932px;
+            background: var(--bg-app);
+            border: 4px solid var(--border-strong);
+            border-radius: 55px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 8px 8px 0 var(--border-strong);
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 30px;
+            background: var(--border-strong);
+            border-radius: 0 0 16px 16px;
+            z-index: 100;
+        }
+
+        /* Screen container */
+        .screen {
+            display: none;
+            height: calc(100% - 80px);
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+
+        .screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* App Header */
+        .app-header {
+            padding: 48px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-app);
+            border-bottom: var(--border-width) solid var(--border-strong);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-secondary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .icon-btn:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .icon-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Sub Header */
+        .sub-header {
+            padding: 12px 16px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .date-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            margin-bottom: 2px;
+        }
+
+        .welcome-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* Page Header */
+        .page-header {
+            padding: 12px 16px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .page-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 0 16px 100px;
+        }
+
+        /* Section Styles */
+        .section {
+            margin: 20px 0;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-left: 4px;
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            padding-left: 8px;
+        }
+
+        .section-action {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border: var(--border-width) solid transparent;
+            transition: all 120ms;
+        }
+
+        .section-action:hover {
+            border-color: var(--accent-secondary);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        /* Weather Card */
+        .weather-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin: 16px 0;
+        }
+
+        .weather-main {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .weather-location {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .weather-temp {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 56px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .weather-right {
+            text-align: right;
+        }
+
+        .weather-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            margin-left: auto;
+        }
+
+        .weather-condition {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .weather-highlow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Activity Card */
+        .activity-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .activity-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .activity-time-block {
+            width: 70px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border-right: var(--border-width) solid var(--border-strong);
+        }
+
+        .activity-time {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .activity-period {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            opacity: 0.7;
+        }
+
+        .activity-info {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .activity-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .activity-location {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .category-block {
+            width: 8px;
+            flex-shrink: 0;
+        }
+
+        .category-block.work { background: var(--accent-secondary); }
+        .category-block.personal { background: var(--accent-primary); }
+        .category-block.health { background: var(--accent-tertiary); }
+        .category-block.family { background: var(--accent-amber); }
+
+        /* Recurring Activity Card */
+        .recurring-activity-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .recurring-activity-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .activity-schedule {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Activity Toggle Switch */
+        .activity-toggle {
+            width: 60px;
+            height: 32px;
+            background: var(--bg-card-alt);
+            border: var(--border-width) solid var(--border-strong);
+            border-radius: 0;
+            position: relative;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+            margin: auto 12px;
+            flex-shrink: 0;
+        }
+
+        .activity-toggle .toggle-slider {
+            width: 24px;
+            height: 24px;
+            background: var(--text-primary);
+            border: var(--border-width) solid var(--border-strong);
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: all 120ms ease-out;
+        }
+
+        .activity-toggle.active {
+            background: var(--accent-tertiary);
+        }
+
+        .activity-toggle.active .toggle-slider {
+            left: 30px;
+            background: white;
+        }
+
+        /* Task Card */
+        .task-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .task-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .task-checkbox-block {
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: var(--border-width) solid var(--border-strong);
+        }
+
+        .task-checkbox {
+            width: 22px;
+            height: 22px;
+            border: var(--border-width) solid var(--border-strong);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .task-checkbox.checked {
+            background: var(--accent-tertiary);
+        }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .task-info {
+            flex: 1;
+            padding: 10px 12px;
+        }
+
+        .task-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .task-title.completed {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .priority-block {
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            writing-mode: vertical-rl;
+            border-left: var(--border-width) solid var(--border-strong);
+        }
+
+        .priority-block.high { background: var(--accent-primary); color: white; }
+        .priority-block.medium { background: var(--accent-amber); color: var(--text-primary); }
+        .priority-block.low { background: var(--accent-tertiary); color: white; }
+
+        /* Sub Tabs */
+        .sub-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 16px;
+            background: var(--bg-card);
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .sub-tab {
+            flex: 1;
+            padding: 12px;
+            background: var(--bg-app);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            text-align: center;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .sub-tab.active {
+            background: var(--text-primary);
+            color: white;
+        }
+
+        .sub-tab:not(.active):hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        /* Food Toggle in Header */
+        .food-header-with-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .food-tab-option {
+            cursor: pointer;
+            transition: all 150ms;
+            color: var(--text-secondary);
+            font-style: normal;
+            position: relative;
+            padding: 2px 4px;
+        }
+
+        .food-tab-option:hover {
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .food-tab-option.active {
+            color: #ff8c00;
+            font-style: italic;
+            text-decoration: underline;
+            text-decoration-thickness: 2px;
+            text-underline-offset: 4px;
+        }
+
+        .food-tab-separator {
+            color: var(--border-strong);
+            font-weight: 400;
+            margin: 0 4px;
+        }
+
+        /* Filter Chips */
+        .filter-chips {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            overflow-x: auto;
+        }
+
+        .filter-chip {
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 120ms;
+        }
+
+        .filter-chip.active {
+            background: var(--text-primary);
+            color: white;
+        }
+
+        /* Idea Card */
+        .idea-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            padding: 16px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .idea-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .idea-header {
+            display: flex;
+            gap: 10px;
+        }
+
+        .idea-arrow {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .idea-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .idea-notes {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Restaurant Card */
+        .restaurant-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .restaurant-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .restaurant-header {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .restaurant-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .restaurant-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .restaurant-cuisine {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .restaurant-meta {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+        }
+
+        .price-range {
+            color: var(--accent-tertiary);
+            font-weight: 600;
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            padding: 16px;
+            background: var(--bg-card);
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .view-toggle-btn {
+            flex: 1;
+            padding: 12px;
+            background: var(--bg-app);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            text-align: center;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .view-toggle-btn.active {
+            background: var(--text-primary);
+            color: white;
+        }
+
+        .view-toggle-btn:not(.active):hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        /* Map View */
+        .map-container {
+            background: #f8f9fa;
+            border: var(--border-width) solid var(--border-strong);
+            height: 500px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 12px;
+            box-shadow: 4px 4px 0 var(--border-strong);
+        }
+
+        .map-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 50px, #e5e7eb 50px, #e5e7eb 51px),
+                repeating-linear-gradient(90deg, transparent, transparent 50px, #e5e7eb 50px, #e5e7eb 51px);
+        }
+
+        /* City Blocks */
+        .map-block {
+            position: absolute;
+            border: var(--border-width) solid var(--border-strong);
+            box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .map-block.park {
+            background: #86efac;
+        }
+
+        .map-block.residential {
+            background: #fde68a;
+        }
+
+        .map-block.commercial {
+            background: #fca5a5;
+        }
+
+        .map-block.downtown {
+            background: #a5b4fc;
+        }
+
+        .map-streets {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 5;
+        }
+
+        .street {
+            position: absolute;
+            background: #9ca3af;
+            border: var(--border-width) solid var(--border-strong);
+            box-shadow: inset 0 0 0 var(--border-width) rgba(255, 255, 255, 0.3);
+        }
+
+        .street.horizontal {
+            height: 32px;
+            left: 0;
+            right: 0;
+        }
+
+        .street.vertical {
+            width: 32px;
+            top: 0;
+            bottom: 0;
+        }
+
+        .map-marker {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 120ms;
+            z-index: 10;
+            box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .map-marker:hover {
+            box-shadow: 5px 5px 0 var(--border-strong);
+            transform: translate(-2px, -2px) scale(1.15);
+            z-index: 20;
+        }
+
+        .map-marker::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 10px solid var(--border-strong);
+            z-index: -1;
+        }
+
+        .map-label {
+            position: absolute;
+            background: white;
+            border: var(--border-width) solid var(--border-strong);
+            padding: 6px 10px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            pointer-events: none;
+            box-shadow: 2px 2px 0 var(--border-strong);
+            z-index: 9;
+        }
+
+        .map-marker:hover + .map-label {
+            background: var(--accent-primary);
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: scale(1.05);
+        }
+
+        .map-legend {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            padding: 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .map-zoom {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .map-zoom-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .map-zoom-btn:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        /* Recipe Card */
+        .recipe-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .recipe-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .recipe-thumbnail {
+            height: 140px;
+            background: linear-gradient(135deg, var(--accent-amber), var(--accent-primary));
+            border-bottom: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            position: relative;
+        }
+
+        .source-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--text-primary);
+            color: white;
+            padding: 4px 10px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .recipe-content {
+            padding: 14px;
+        }
+
+        .recipe-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .recipe-meta {
+            display: flex;
+            gap: 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .groceries-btn {
+            padding: 10px 16px;
+            background: var(--accent-tertiary);
+            color: white;
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .groceries-btn:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        /* Grocery Category */
+        .category-section {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 12px;
+        }
+
+        .category-header {
+            padding: 12px 14px;
+            border-bottom: var(--border-width) solid var(--border-strong);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .category-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .category-icon {
+            width: 32px;
+            height: 32px;
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .category-icon.produce { background: #dcfce7; }
+        .category-icon.dairy { background: #fef3c7; }
+        .category-icon.meat { background: #fee2e2; }
+
+        .category-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .category-count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .grocery-item {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--bg-card-alt);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .grocery-item:last-child {
+            border-bottom: none;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border: var(--border-width) solid var(--border-strong);
+            background: var(--bg-card);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checkbox.checked {
+            background: var(--accent-tertiary);
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .item-name {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .quantity-badge {
+            padding: 2px 8px;
+            background: var(--bg-app);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Calendar */
+        .calendar-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        .month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .month-year {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .nav-arrows {
+            display: flex;
+            gap: 6px;
+        }
+
+        .arrow-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .arrow-btn:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .day-headers {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            margin-bottom: 6px;
+        }
+
+        .day-header {
+            text-align: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            padding: 6px 0;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border: var(--border-width) solid var(--border-strong);
+            background: var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .calendar-day:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .calendar-day.other-month {
+            background: var(--bg-app);
+            border-color: #d1d5db;
+        }
+
+        .calendar-day.other-month .day-number {
+            color: var(--text-muted);
+        }
+
+        .calendar-day.today {
+            border-color: var(--accent-secondary);
+            border-width: 3px;
+        }
+
+        .calendar-day.selected {
+            background: var(--text-primary);
+        }
+
+        .calendar-day.selected .day-number {
+            color: white;
+        }
+
+        .day-number {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .event-dots {
+            display: flex;
+            gap: 2px;
+            margin-top: 2px;
+        }
+
+        .event-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+        }
+
+        .event-dot.red { background: var(--accent-primary); }
+        .event-dot.blue { background: var(--accent-secondary); }
+        .event-dot.green { background: var(--accent-tertiary); }
+        .event-dot.pink { background: var(--accent-pink); }
+
+        .event-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .event-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .event-time {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 55px;
+        }
+
+        .event-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .event-category {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .event-category.work { background: var(--accent-primary); color: white; }
+        .event-category.personal { background: var(--accent-secondary); color: white; }
+        .event-category.birthday { background: var(--accent-pink); color: white; }
+
+        /* Person Card (Gifts) */
+        .person-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .person-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .person-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .person-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--accent-purple);
+            border: var(--border-width) solid var(--border-strong);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .person-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .person-meta {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .badge {
+            padding: 3px 10px;
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-birthday {
+            background: var(--accent-amber);
+        }
+
+        .badge-count {
+            background: var(--accent-purple);
+            color: white;
+        }
+
+        /* Settings Sections */
+        .settings-section {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            border-left: 4px solid var(--accent-primary);
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+
+        .settings-section-header {
+            background: var(--bg-app);
+            padding: 10px 14px;
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .settings-section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .settings-section-content {
+            padding: 14px;
+        }
+
+        .theme-toggle {
+            display: flex;
+            gap: 8px;
+        }
+
+        .theme-button {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .theme-button.active {
+            background: var(--text-primary);
+            color: white;
+        }
+
+        .tab-manage-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg-app);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 6px;
+        }
+
+        .drag-handle {
+            color: var(--text-muted);
+            cursor: grab;
+        }
+
+        .tab-manage-name {
+            flex: 1;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .quick-action-btn {
+            padding: 12px 8px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--text-primary);
+            color: white;
+        }
+
+        .quick-action-btn span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* FAB */
+        .fab {
+            position: absolute;
+            bottom: 100px;
+            right: 16px;
+            width: 52px;
+            height: 52px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+            transition: all 120ms;
+            font-size: 28px;
+            color: white;
+            font-weight: 700;
+        }
+
+        .fab:hover {
+            box-shadow: 4px 4px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: var(--tab-bar-bg);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding: 8px 4px 0;
+            z-index: 80;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .tab-item.active {
+            background: var(--accent-amber);
+        }
+
+        .tab-item .tab-icon {
+            font-size: 20px;
+            color: var(--bg-card-alt);
+            transition: all 120ms;
+        }
+
+        .tab-item.active .tab-icon {
+            color: var(--text-primary);
+        }
+
+        .tab-item .tab-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--bg-card-alt);
+            transition: all 120ms;
+        }
+
+        .tab-item.active .tab-label {
+            color: var(--text-primary);
+        }
+
+        /* Add Button */
+        .add-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--bg-card);
+            border: var(--border-width) dashed var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 120ms;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .add-btn:hover {
+            background: var(--bg-app);
+            color: var(--text-primary);
+        }
+
+        .date-section-header {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            padding: 12px 0 8px;
+            border-bottom: var(--border-width) solid var(--border-strong);
+            margin-bottom: 10px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Restaurant Detail View */
+        .restaurant-detail {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-app);
+            z-index: 200;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 300ms ease-out;
+        }
+
+        .restaurant-detail.active {
+            transform: translateY(0);
+        }
+
+        .detail-header {
+            background: var(--text-primary);
+            padding: 48px 16px 16px;
+            border-bottom: var(--border-width) solid var(--border-strong);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .back-button {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 120ms;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .back-button:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .detail-title-section {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .detail-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .detail-title-text {
+            flex: 1;
+        }
+
+        .detail-restaurant-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+
+        .detail-restaurant-cuisine {
+            font-size: 14px;
+            color: var(--bg-card-alt);
+            margin-bottom: 6px;
+        }
+
+        .detail-price-range {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent-amber);
+        }
+
+        .detail-content {
+            padding: 20px 16px 100px;
+        }
+
+        .detail-section {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .detail-section-header {
+            background: var(--bg-app);
+            padding: 12px 14px;
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .detail-section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+        }
+
+        .detail-section-content {
+            padding: 16px;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-app);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .info-text {
+            flex: 1;
+            padding-top: 4px;
+        }
+
+        .info-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .hours-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px 12px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+        }
+
+        .hours-day {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .hours-time {
+            color: var(--text-secondary);
+        }
+
+        .hours-day.today {
+            color: var(--accent-secondary);
+        }
+
+        .hours-time.today {
+            color: var(--accent-secondary);
+            font-weight: 600;
+        }
+
+        .action-button {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent-secondary);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: white;
+            cursor: pointer;
+            transition: all 120ms;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .action-button:hover {
+            box-shadow: 4px 4px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .notes-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            background: var(--bg-app);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+            resize: vertical;
+        }
+
+        .notes-textarea:focus {
+            outline: none;
+            border-color: var(--accent-secondary);
+        }
+
+        .notes-placeholder {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 12px;
+            background: var(--bg-app);
+            border: var(--border-width) dashed var(--border-strong);
+        }
+
+        /* Distance Badge in Header */
+        .detail-distance {
+            display: inline-block;
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+            padding: 4px 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 6px;
+        }
+
+        /* Dishes List */
+        .dish-item {
+            background: var(--bg-app);
+            border: var(--border-width) solid var(--border-strong);
+            padding: 12px;
+            margin-bottom: 8px;
+            transition: all 120ms;
+        }
+
+        .dish-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .dish-item:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .dish-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .dish-description {
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Action Buttons Grid */
+        .action-buttons-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .action-button-secondary {
+            padding: 14px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 120ms;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-button-secondary:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .action-button-favorite {
+            background: var(--accent-amber);
+            color: white;
+        }
+
+        .action-button-favorite:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <div class="device-frame">
+        <div class="device-notch"></div>
+
+        <!-- TODAY SCREEN -->
+        <div class="screen active" id="screen-today">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Org</span>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">M</div>
+                    <button class="icon-btn" onclick="switchScreen('settings')">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="sub-header">
+                <div class="date-text">Thu / Dec 12 / 2024</div>
+                <div class="welcome-text">Good evening, Mauri</div>
+            </div>
+
+            <main class="main-content">
+                <div class="weather-card">
+                    <div class="weather-main">
+                        <div>
+                            <div class="weather-location">Indianapolis, IN</div>
+                            <div class="weather-temp">42°</div>
+                        </div>
+                        <div class="weather-right">
+                            <div class="weather-icon">☀️</div>
+                            <div class="weather-condition">Clear</div>
+                            <div class="weather-highlow">H:48° / L:32°</div>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Today's Schedule</h2>
+                        <span class="section-action">See All →</span>
+                    </div>
+
+                    <div class="activity-card">
+                        <div class="activity-time-block">
+                            <span class="activity-time">9:00</span>
+                            <span class="activity-period">AM</span>
+                        </div>
+                        <div class="activity-info">
+                            <div class="activity-title">Team Standup</div>
+                            <div class="activity-location">Zoom Meeting</div>
+                        </div>
+                        <div class="category-block work"></div>
+                    </div>
+
+                    <div class="activity-card">
+                        <div class="activity-time-block">
+                            <span class="activity-time">12:30</span>
+                            <span class="activity-period">PM</span>
+                        </div>
+                        <div class="activity-info">
+                            <div class="activity-title">Lunch with Sarah</div>
+                            <div class="activity-location">Cafe Luna</div>
+                        </div>
+                        <div class="category-block personal"></div>
+                    </div>
+
+                    <div class="activity-card">
+                        <div class="activity-time-block">
+                            <span class="activity-time">3:00</span>
+                            <span class="activity-period">PM</span>
+                        </div>
+                        <div class="activity-info">
+                            <div class="activity-title">Gym Session</div>
+                            <div class="activity-location">FitLife Gym</div>
+                        </div>
+                        <div class="category-block health"></div>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Tasks Due Today</h2>
+                        <span class="section-action">View All →</span>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox-block">
+                            <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Review Q4 budget proposal</div>
+                            <div class="task-meta"><span>Due 5:00 PM</span></div>
+                        </div>
+                        <div class="priority-block high">High</div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox-block">
+                            <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Prepare grocery list</div>
+                            <div class="task-meta"><span>Due 8:00 PM</span></div>
+                        </div>
+                        <div class="priority-block medium">Med</div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox-block">
+                            <div class="task-checkbox checked" onclick="this.classList.toggle('checked')"></div>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title completed">Call dentist</div>
+                            <div class="task-meta"><span>Completed</span></div>
+                        </div>
+                        <div class="priority-block low">Low</div>
+                    </div>
+                </section>
+
+                <div class="quick-actions">
+                    <button class="quick-action-btn">
+                        <span>📋</span>
+                        <span>+ Task</span>
+                    </button>
+                    <button class="quick-action-btn">
+                        <span>⏰</span>
+                        <span>+ Event</span>
+                    </button>
+                    <button class="quick-action-btn">
+                        <span>🛒</span>
+                        <span>+ Grocery</span>
+                    </button>
+                </div>
+            </main>
+        </div>
+
+        <!-- IDEAS SCREEN -->
+        <div class="screen" id="screen-ideas">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    </div>
+                    <span class="logo-text">Life Org</span>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">M</div>
+                    <button class="icon-btn" onclick="switchScreen('settings')">⚙</button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <h1 class="page-title">💡 Ideas</h1>
+            </div>
+
+            <div class="sub-tabs">
+                <div class="sub-tab active">Personal</div>
+                <div class="sub-tab">Household</div>
+            </div>
+
+            <main class="main-content">
+                <div class="idea-card">
+                    <div class="idea-header">
+                        <div class="idea-arrow">→</div>
+                        <div>
+                            <div class="idea-title">Weekend camping trip to Brown County</div>
+                            <div class="idea-notes">Check availability for late September</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="idea-card">
+                    <div class="idea-header">
+                        <div class="idea-arrow">→</div>
+                        <div>
+                            <div class="idea-title">Learn to make homemade pasta</div>
+                            <div class="idea-notes">Look up Italian cooking classes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="idea-card">
+                    <div class="idea-header">
+                        <div class="idea-arrow">→</div>
+                        <div>
+                            <div class="idea-title">Start a book club with neighbors</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="idea-card">
+                    <div class="idea-header">
+                        <div class="idea-arrow">→</div>
+                        <div>
+                            <div class="idea-title">Research solar panel installation</div>
+                            <div class="idea-notes">Get quotes from 3 companies</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="add-btn">+ Add Idea</button>
+            </main>
+        </div>
+
+        <!-- FOOD SCREEN -->
+        <div class="screen" id="screen-food">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    </div>
+                    <span class="logo-text">Life Org</span>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">M</div>
+                    <button class="icon-btn" onclick="switchScreen('settings')">⚙</button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <h1 class="page-title food-header-with-toggle">
+                    <span class="food-tab-option active" id="restaurants-tab" onclick="switchFoodView('restaurants')">RESTAURANTS</span>
+                    <span class="food-tab-separator">/</span>
+                    <span class="food-tab-option" id="recipes-tab" onclick="switchFoodView('recipes')">RECIPES</span>
+                </h1>
+            </div>
+
+            <!-- List/Map Toggle for Restaurants -->
+            <div class="view-toggle" id="restaurant-view-toggle">
+                <button class="view-toggle-btn active" onclick="toggleRestaurantView('list')">List</button>
+                <button class="view-toggle-btn" onclick="toggleRestaurantView('map')">Map</button>
+            </div>
+
+            <main class="main-content">
+                <!-- Restaurants List View -->
+                <div id="restaurants-list-view">
+                    <div class="restaurant-card" onclick="showRestaurantDetail('joes')">
+                        <div class="restaurant-header">
+                            <div class="restaurant-icon">🍕</div>
+                            <div>
+                                <div class="restaurant-name">Joe's Pizza</div>
+                                <div class="restaurant-cuisine">Italian • Pizza</div>
+                            </div>
+                        </div>
+                        <div class="restaurant-meta">
+                            <span class="price-range">$$</span>
+                            <span>0.8 mi</span>
+                        </div>
+                    </div>
+
+                    <div class="restaurant-card" onclick="showRestaurantDetail('ramen')">
+                        <div class="restaurant-header">
+                            <div class="restaurant-icon">🍜</div>
+                            <div>
+                                <div class="restaurant-name">Ramen House</div>
+                                <div class="restaurant-cuisine">Japanese • Ramen</div>
+                            </div>
+                        </div>
+                        <div class="restaurant-meta">
+                            <span class="price-range">$$$</span>
+                            <span>1.2 mi</span>
+                        </div>
+                    </div>
+
+                    <div class="restaurant-card" onclick="showRestaurantDetail('taco')">
+                        <div class="restaurant-header">
+                            <div class="restaurant-icon">🌮</div>
+                            <div>
+                                <div class="restaurant-name">Taco Loco</div>
+                                <div class="restaurant-cuisine">Mexican • Street Food</div>
+                            </div>
+                        </div>
+                        <div class="restaurant-meta">
+                            <span class="price-range">$</span>
+                            <span>0.4 mi</span>
+                        </div>
+                    </div>
+
+                    <button class="add-btn">+ Add Restaurant</button>
+                </div>
+
+                <!-- Restaurants Map View -->
+                <div id="restaurants-map-view" class="hidden">
+                    <div class="map-container">
+                        <!-- Map Grid Background -->
+                        <div class="map-grid"></div>
+
+                        <!-- City Blocks/Areas -->
+                        <div class="map-block park" style="top: 20px; left: 20px; width: 80px; height: 100px;"></div>
+                        <div class="map-block residential" style="top: 20px; left: 160px; width: 120px; height: 100px;"></div>
+                        <div class="map-block commercial" style="top: 190px; left: 20px; width: 180px; height: 130px;"></div>
+                        <div class="map-block downtown" style="top: 190px; left: 220px; width: 140px; height: 130px;"></div>
+                        <div class="map-block residential" style="top: 360px; left: 20px; width: 100px; height: 120px;"></div>
+                        <div class="map-block park" style="top: 360px; left: 160px; width: 90px; height: 120px;"></div>
+                        <div class="map-block commercial" style="top: 360px; left: 280px; width: 80px; height: 120px;"></div>
+
+                        <!-- Map Streets -->
+                        <div class="map-streets">
+                            <div class="street horizontal" style="top: 140px;"></div>
+                            <div class="street horizontal" style="top: 340px;"></div>
+                            <div class="street vertical" style="left: 130px;"></div>
+                            <div class="street vertical" style="left: 270px;"></div>
+                        </div>
+
+                        <!-- Restaurant Markers with Labels -->
+                        <div class="map-marker" style="top: 75px; left: 175px;">🍕</div>
+                        <div class="map-label" style="top: 60px; left: 220px;">Joe's Pizza</div>
+
+                        <div class="map-marker" style="top: 240px; left: 240px;">🍜</div>
+                        <div class="map-label" style="top: 225px; left: 285px;">Ramen House</div>
+
+                        <div class="map-marker" style="top: 395px; left: 45px;">🌮</div>
+                        <div class="map-label" style="top: 380px; left: 90px;">Taco Loco</div>
+
+                        <!-- Map Legend -->
+                        <div class="map-legend">
+                            <div style="font-weight: 700; margin-bottom: 4px;">Indianapolis, IN</div>
+                            <div style="display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 9px;">
+                                <div style="width: 12px; height: 12px; background: #86efac; border: 1px solid black;"></div>
+                                <span>Park</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 9px;">
+                                <div style="width: 12px; height: 12px; background: #fde68a; border: 1px solid black;"></div>
+                                <span>Residential</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 9px;">
+                                <div style="width: 12px; height: 12px; background: #fca5a5; border: 1px solid black;"></div>
+                                <span>Commercial</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 9px;">
+                                <div style="width: 12px; height: 12px; background: #a5b4fc; border: 1px solid black;"></div>
+                                <span>Downtown</span>
+                            </div>
+                        </div>
+
+                        <!-- Map Zoom Controls -->
+                        <div class="map-zoom">
+                            <button class="map-zoom-btn">+</button>
+                            <button class="map-zoom-btn">-</button>
+                        </div>
+                    </div>
+                    <button class="add-btn">+ Add Restaurant</button>
+                </div>
+
+                <div id="recipes-view" class="hidden">
+                    <div class="recipe-card">
+                        <div class="recipe-thumbnail">
+                            🍝
+                            <div class="source-badge">TikTok</div>
+                        </div>
+                        <div class="recipe-content">
+                            <div class="recipe-title">Creamy Tuscan Chicken Pasta</div>
+                            <div class="recipe-meta">
+                                <span>⏱️ 30 min</span>
+                                <span>📊 Medium</span>
+                                <span>🍽️ 4 servings</span>
+                            </div>
+                            <button class="groceries-btn">+ Groceries</button>
+                        </div>
+                    </div>
+
+                    <div class="recipe-card">
+                        <div class="recipe-thumbnail">
+                            🥗
+                            <div class="source-badge">Instagram</div>
+                        </div>
+                        <div class="recipe-content">
+                            <div class="recipe-title">Mediterranean Quinoa Bowl</div>
+                            <div class="recipe-meta">
+                                <span>⏱️ 20 min</span>
+                                <span>📊 Easy</span>
+                                <span>🍽️ 2 servings</span>
+                            </div>
+                            <button class="groceries-btn">+ Groceries</button>
+                        </div>
+                    </div>
+
+                    <button class="add-btn">🔗 Add Recipe from URL</button>
+                </div>
+            </main>
+        </div>
+
+        <!-- TO DO SCREEN (Tasks & Activities) -->
+        <div class="screen" id="screen-tasks">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    </div>
+                    <span class="logo-text">Life Org</span>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">M</div>
+                    <button class="icon-btn" onclick="switchScreen('settings')">⚙</button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <h1 class="page-title">📋 TO DO</h1>
+            </div>
+
+            <div class="sub-tabs" id="todo-tabs">
+                <div class="sub-tab active" onclick="switchToDoTab('tasks')">TASKS</div>
+                <div class="sub-tab" onclick="switchToDoTab('activities')">ACTIVITIES</div>
+            </div>
+
+            <!-- TASKS VIEW -->
+            <div id="tasks-view">
+                <div class="filter-chips">
+                    <div class="filter-chip active">All</div>
+                    <div class="filter-chip">Today</div>
+                    <div class="filter-chip">Upcoming</div>
+                    <div class="filter-chip">Overdue</div>
+                </div>
+
+                <main class="main-content">
+                <div class="date-section-header">⚠ Overdue</div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title">Submit quarterly tax documents</div>
+                        <div class="task-meta"><span>📅 Dec 8, 5:00 PM</span></div>
+                    </div>
+                    <div class="priority-block high">High</div>
+                </div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title">Review budget proposal</div>
+                        <div class="task-meta"><span>📅 Dec 10, 3:00 PM</span></div>
+                    </div>
+                    <div class="priority-block medium">Med</div>
+                </div>
+
+                <div class="date-section-header">📅 Today - Dec 12</div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox checked" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title completed">Morning workout routine</div>
+                        <div class="task-meta"><span>✓ Completed at 7:00 AM</span></div>
+                    </div>
+                    <div class="priority-block low">Low</div>
+                </div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title">Prepare presentation slides</div>
+                        <div class="task-meta"><span>📅 2:00 PM</span></div>
+                    </div>
+                    <div class="priority-block high">High</div>
+                </div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title">Call dentist for appointment</div>
+                        <div class="task-meta"><span>📅 4:00 PM</span></div>
+                    </div>
+                    <div class="priority-block medium">Med</div>
+                </div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title">Grocery shopping</div>
+                        <div class="task-meta"><span>📅 6:00 PM</span></div>
+                    </div>
+                    <div class="priority-block low">Low</div>
+                </div>
+
+                <div class="date-section-header">📆 Tomorrow - Dec 13</div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title">Client presentation</div>
+                        <div class="task-meta"><span>📅 10:00 AM</span></div>
+                    </div>
+                    <div class="priority-block high">High</div>
+                </div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title">Water plants</div>
+                        <div class="task-meta"><span>📅 No specific time</span></div>
+                    </div>
+                    <div class="priority-block low">Low</div>
+                </div>
+
+                <div class="date-section-header">📆 This Week</div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title">Finish project documentation</div>
+                        <div class="task-meta"><span>📅 Dec 15, End of day</span></div>
+                    </div>
+                    <div class="priority-block high">High</div>
+                </div>
+
+                <div class="task-card">
+                    <div class="task-checkbox-block">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                    </div>
+                    <div class="task-info">
+                        <div class="task-title">Schedule car maintenance</div>
+                        <div class="task-meta"><span>📅 Dec 16</span></div>
+                    </div>
+                    <div class="priority-block medium">Med</div>
+                </div>
+
+                <button class="add-btn">+ Add Task</button>
+            </main>
+            </div>
+
+            <!-- ACTIVITIES VIEW -->
+            <div id="activities-view" class="hidden">
+                <div class="filter-chips">
+                    <div class="filter-chip active">All</div>
+                    <div class="filter-chip">Health</div>
+                    <div class="filter-chip">Home</div>
+                    <div class="filter-chip">Work</div>
+                </div>
+
+                <main class="main-content">
+                    <div class="date-section-header">💪 Health & Wellness</div>
+
+                    <div class="recurring-activity-card">
+                        <div class="category-block health"></div>
+                        <div class="activity-info">
+                            <div class="activity-title">Morning Workout</div>
+                            <div class="activity-schedule">Daily at 7:00 AM</div>
+                        </div>
+                        <div class="activity-toggle active" onclick="this.classList.toggle('active')">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
+                    <div class="recurring-activity-card">
+                        <div class="category-block health"></div>
+                        <div class="activity-info">
+                            <div class="activity-title">Take Vitamins</div>
+                            <div class="activity-schedule">Daily at 8:00 AM</div>
+                        </div>
+                        <div class="activity-toggle active" onclick="this.classList.toggle('active')">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
+                    <div class="date-section-header">🏡 Home & Lifestyle</div>
+
+                    <div class="recurring-activity-card">
+                        <div class="category-block personal"></div>
+                        <div class="activity-info">
+                            <div class="activity-title">Water Plants</div>
+                            <div class="activity-schedule">Every 3 days</div>
+                        </div>
+                        <div class="activity-toggle active" onclick="this.classList.toggle('active')">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
+                    <div class="recurring-activity-card">
+                        <div class="category-block personal"></div>
+                        <div class="activity-info">
+                            <div class="activity-title">Weekly Meal Prep</div>
+                            <div class="activity-schedule">Sundays at 10:00 AM</div>
+                        </div>
+                        <div class="activity-toggle active" onclick="this.classList.toggle('active')">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
+                    <div class="recurring-activity-card">
+                        <div class="category-block family"></div>
+                        <div class="activity-info">
+                            <div class="activity-title">Call Parents</div>
+                            <div class="activity-schedule">Every Sunday at 6:00 PM</div>
+                        </div>
+                        <div class="activity-toggle" onclick="this.classList.toggle('active')">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
+                    <div class="date-section-header">💼 Work & Productivity</div>
+
+                    <div class="recurring-activity-card">
+                        <div class="category-block work"></div>
+                        <div class="activity-info">
+                            <div class="activity-title">Weekly Review</div>
+                            <div class="activity-schedule">Fridays at 4:00 PM</div>
+                        </div>
+                        <div class="activity-toggle active" onclick="this.classList.toggle('active')">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
+                    <button class="add-btn">+ Add Recurring Activity</button>
+                </main>
+            </div>
+        </div>
+
+        <!-- SHOP SCREEN -->
+        <div class="screen" id="screen-shop">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    </div>
+                    <span class="logo-text">Life Org</span>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">M</div>
+                    <button class="icon-btn" onclick="switchScreen('settings')">⚙</button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <h1 class="page-title">🛒 Groceries</h1>
+            </div>
+
+            <main class="main-content">
+                <div class="category-section">
+                    <div class="category-header">
+                        <div class="category-title-group">
+                            <div class="category-icon produce">🥬</div>
+                            <div>
+                                <div class="category-name">Produce</div>
+                                <div class="category-count">5 items · 2 checked</div>
+                            </div>
+                        </div>
+                        <span>▼</span>
+                    </div>
+                    <div class="grocery-item">
+                        <div class="checkbox" onclick="this.classList.toggle('checked')"></div>
+                        <span class="item-name">Bananas</span>
+                        <span class="quantity-badge">×6</span>
+                    </div>
+                    <div class="grocery-item">
+                        <div class="checkbox" onclick="this.classList.toggle('checked')"></div>
+                        <span class="item-name">Spinach</span>
+                    </div>
+                    <div class="grocery-item">
+                        <div class="checkbox" onclick="this.classList.toggle('checked')"></div>
+                        <span class="item-name">Tomatoes</span>
+                        <span class="quantity-badge">×4</span>
+                    </div>
+                    <div class="grocery-item">
+                        <div class="checkbox checked" onclick="this.classList.toggle('checked')"></div>
+                        <span class="item-name" style="text-decoration: line-through; opacity: 0.5;">Avocados</span>
+                        <span class="quantity-badge">×3</span>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-header">
+                        <div class="category-title-group">
+                            <div class="category-icon dairy">🧀</div>
+                            <div>
+                                <div class="category-name">Dairy</div>
+                                <div class="category-count">4 items · 1 checked</div>
+                            </div>
+                        </div>
+                        <span>▼</span>
+                    </div>
+                    <div class="grocery-item">
+                        <div class="checkbox" onclick="this.classList.toggle('checked')"></div>
+                        <span class="item-name">Whole Milk</span>
+                    </div>
+                    <div class="grocery-item">
+                        <div class="checkbox" onclick="this.classList.toggle('checked')"></div>
+                        <span class="item-name">Cheddar Cheese</span>
+                    </div>
+                    <div class="grocery-item">
+                        <div class="checkbox checked" onclick="this.classList.toggle('checked')"></div>
+                        <span class="item-name" style="text-decoration: line-through; opacity: 0.5;">Butter</span>
+                    </div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-header">
+                        <div class="category-title-group">
+                            <div class="category-icon meat">🍖</div>
+                            <div>
+                                <div class="category-name">Meat</div>
+                                <div class="category-count">3 items</div>
+                            </div>
+                        </div>
+                        <span>▼</span>
+                    </div>
+                    <div class="grocery-item">
+                        <div class="checkbox" onclick="this.classList.toggle('checked')"></div>
+                        <span class="item-name">Ground Beef</span>
+                        <span class="quantity-badge">2 lbs</span>
+                    </div>
+                    <div class="grocery-item">
+                        <div class="checkbox" onclick="this.classList.toggle('checked')"></div>
+                        <span class="item-name">Chicken Breast</span>
+                        <span class="quantity-badge">3 lbs</span>
+                    </div>
+                </div>
+
+                <button class="add-btn">+ Add Item</button>
+            </main>
+        </div>
+
+        <!-- CALENDAR SCREEN -->
+        <div class="screen" id="screen-calendar">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    </div>
+                    <span class="logo-text">Life Org</span>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">M</div>
+                    <button class="icon-btn" onclick="switchScreen('settings')">⚙</button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <h1 class="page-title">📅 Calendar</h1>
+            </div>
+
+            <main class="main-content">
+                <div class="calendar-card">
+                    <div class="month-nav">
+                        <div class="month-year">Dec 2024</div>
+                        <div class="nav-arrows">
+                            <button class="arrow-btn">&lt;</button>
+                            <button class="arrow-btn">&gt;</button>
+                        </div>
+                    </div>
+
+                    <div class="day-headers">
+                        <div class="day-header">Sun</div>
+                        <div class="day-header">Mon</div>
+                        <div class="day-header">Tue</div>
+                        <div class="day-header">Wed</div>
+                        <div class="day-header">Thu</div>
+                        <div class="day-header">Fri</div>
+                        <div class="day-header">Sat</div>
+                    </div>
+
+                    <div class="calendar-grid">
+                        <div class="calendar-day other-month"><div class="day-number">1</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">2</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">3</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">4</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">5</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">6</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">7</div></div>
+                        <div class="calendar-day"><div class="day-number">8</div><div class="event-dots"><div class="event-dot red"></div></div></div>
+                        <div class="calendar-day"><div class="day-number">9</div></div>
+                        <div class="calendar-day"><div class="day-number">10</div><div class="event-dots"><div class="event-dot blue"></div></div></div>
+                        <div class="calendar-day"><div class="day-number">11</div></div>
+                        <div class="calendar-day today selected"><div class="day-number">12</div><div class="event-dots"><div class="event-dot red"></div><div class="event-dot blue"></div></div></div>
+                        <div class="calendar-day"><div class="day-number">13</div></div>
+                        <div class="calendar-day"><div class="day-number">14</div></div>
+                        <div class="calendar-day"><div class="day-number">15</div><div class="event-dots"><div class="event-dot green"></div></div></div>
+                        <div class="calendar-day"><div class="day-number">16</div></div>
+                        <div class="calendar-day"><div class="day-number">17</div></div>
+                        <div class="calendar-day"><div class="day-number">18</div></div>
+                        <div class="calendar-day"><div class="day-number">19</div></div>
+                        <div class="calendar-day"><div class="day-number">20</div><div class="event-dots"><div class="event-dot pink"></div></div></div>
+                        <div class="calendar-day"><div class="day-number">21</div></div>
+                        <div class="calendar-day"><div class="day-number">22</div></div>
+                        <div class="calendar-day"><div class="day-number">23</div></div>
+                        <div class="calendar-day"><div class="day-number">24</div></div>
+                        <div class="calendar-day"><div class="day-number">25</div><div class="event-dots"><div class="event-dot blue"></div></div></div>
+                        <div class="calendar-day"><div class="day-number">26</div></div>
+                        <div class="calendar-day"><div class="day-number">27</div></div>
+                        <div class="calendar-day"><div class="day-number">28</div></div>
+                        <div class="calendar-day"><div class="day-number">29</div></div>
+                        <div class="calendar-day"><div class="day-number">30</div></div>
+                        <div class="calendar-day"><div class="day-number">31</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">1</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">2</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">3</div></div>
+                        <div class="calendar-day other-month"><div class="day-number">4</div></div>
+                    </div>
+                </div>
+
+                <div class="date-section-header">Thu, Dec 12</div>
+
+                <div class="event-card">
+                    <div class="event-time">09:00</div>
+                    <div>
+                        <div class="event-title">Team Standup</div>
+                        <div class="event-category work">Work</div>
+                    </div>
+                </div>
+
+                <div class="event-card">
+                    <div class="event-time">12:30</div>
+                    <div>
+                        <div class="event-title">Lunch with Sarah</div>
+                        <div class="event-category personal">Personal</div>
+                    </div>
+                </div>
+
+                <div class="event-card">
+                    <div class="event-time">ALL DAY</div>
+                    <div>
+                        <div class="event-title">Mom's Birthday</div>
+                        <div class="event-category birthday">Birthday</div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- GIFTS SCREEN -->
+        <div class="screen" id="screen-gifts">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    </div>
+                    <span class="logo-text">Life Org</span>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">M</div>
+                    <button class="icon-btn" onclick="switchScreen('settings')">⚙</button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <h1 class="page-title">🎁 Gifts</h1>
+            </div>
+
+            <main class="main-content">
+                <div class="person-card">
+                    <div class="person-header">
+                        <div class="person-icon">👤</div>
+                        <div>
+                            <div class="person-name">Sarah Johnson</div>
+                            <div class="person-meta">
+                                <span class="badge badge-birthday">Mar 23</span>
+                                <span class="badge badge-count">5 ideas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="person-card">
+                    <div class="person-header">
+                        <div class="person-icon">👤</div>
+                        <div>
+                            <div class="person-name">Mom</div>
+                            <div class="person-meta">
+                                <span class="badge badge-birthday">Jul 15</span>
+                                <span class="badge badge-count">3 ideas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="person-card">
+                    <div class="person-header">
+                        <div class="person-icon">👤</div>
+                        <div>
+                            <div class="person-name">Alex Chen</div>
+                            <div class="person-meta">
+                                <span class="badge badge-birthday">Dec 8</span>
+                                <span class="badge badge-count">2 ideas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="person-card">
+                    <div class="person-header">
+                        <div class="person-icon">👤</div>
+                        <div>
+                            <div class="person-name">Dad</div>
+                            <div class="person-meta">
+                                <span class="badge badge-birthday">Oct 2</span>
+                                <span class="badge badge-count">4 ideas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="add-btn">+ Add Person</button>
+            </main>
+        </div>
+
+        <!-- SETTINGS SCREEN -->
+        <div class="screen" id="screen-settings">
+            <header class="app-header" style="background: var(--text-primary);">
+                <button class="icon-btn" onclick="switchScreen('today')" style="background: var(--bg-card);">←</button>
+                <span class="logo-text" style="color: white; flex: 1; margin-left: 12px;">Settings</span>
+            </header>
+
+            <main class="main-content" style="padding-top: 16px;">
+                <div class="settings-section">
+                    <div class="settings-section-header">
+                        <h2 class="settings-section-title">Appearance</h2>
+                    </div>
+                    <div class="settings-section-content">
+                        <div class="theme-toggle">
+                            <button class="theme-button active">Light</button>
+                            <button class="theme-button">Dark</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-header">
+                        <h2 class="settings-section-title">Manage Tabs</h2>
+                    </div>
+                    <div class="settings-section-content">
+                        <div class="tab-manage-item">
+                            <span class="drag-handle">⋮⋮</span>
+                            <span class="tab-manage-name">Today</span>
+                            <span style="color: var(--accent-amber);">★</span>
+                            <span>👁</span>
+                        </div>
+                        <div class="tab-manage-item">
+                            <span class="drag-handle">⋮⋮</span>
+                            <span class="tab-manage-name">Ideas</span>
+                            <span style="color: var(--text-muted);">☆</span>
+                            <span>👁</span>
+                        </div>
+                        <div class="tab-manage-item">
+                            <span class="drag-handle">⋮⋮</span>
+                            <span class="tab-manage-name">Food</span>
+                            <span style="color: var(--text-muted);">☆</span>
+                            <span>👁</span>
+                        </div>
+                        <div class="tab-manage-item">
+                            <span class="drag-handle">⋮⋮</span>
+                            <span class="tab-manage-name">To Do</span>
+                            <span style="color: var(--text-muted);">☆</span>
+                            <span>👁</span>
+                        </div>
+                        <div class="tab-manage-item">
+                            <span class="drag-handle">⋮⋮</span>
+                            <span class="tab-manage-name">Shop</span>
+                            <span style="color: var(--text-muted);">☆</span>
+                            <span>👁</span>
+                        </div>
+                        <div class="tab-manage-item">
+                            <span class="drag-handle">⋮⋮</span>
+                            <span class="tab-manage-name">Calendar</span>
+                            <span style="color: var(--text-muted);">☆</span>
+                            <span>👁</span>
+                        </div>
+                        <div class="tab-manage-item">
+                            <span class="drag-handle">⋮⋮</span>
+                            <span class="tab-manage-name">Gifts</span>
+                            <span style="color: var(--text-muted);">☆</span>
+                            <span>👁</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-header">
+                        <h2 class="settings-section-title">Account</h2>
+                    </div>
+                    <div class="settings-section-content">
+                        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+                            <div style="width: 50px; height: 50px; background: var(--accent-primary); border: 2px solid var(--border-strong); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; color: white;">M</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 15px;">Mauri</div>
+                                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text-secondary);">mauri@email.com</div>
+                            </div>
+                        </div>
+                        <button class="add-btn" style="border-style: solid;">Sign Out</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-header">
+                        <h2 class="settings-section-title">About</h2>
+                    </div>
+                    <div class="settings-section-content">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Version</span>
+                            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">1.0.0</span>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Restaurant Detail View -->
+        <div class="restaurant-detail" id="restaurant-detail">
+            <div class="detail-header">
+                <button class="back-button" onclick="hideRestaurantDetail()">←</button>
+                <div class="detail-title-section">
+                    <div class="detail-icon" id="detail-icon">🍕</div>
+                    <div class="detail-title-text">
+                        <div class="detail-restaurant-name" id="detail-name">Joe's Pizza</div>
+                        <div class="detail-restaurant-cuisine" id="detail-cuisine">Italian • Pizza</div>
+                        <div class="detail-price-range" id="detail-price">$$</div>
+                        <div class="detail-distance" id="detail-distance">0.8 mi</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-content">
+                <!-- Contact Information Section -->
+                <div class="detail-section">
+                    <div class="detail-section-header">
+                        <h2 class="detail-section-title">Contact</h2>
+                    </div>
+                    <div class="detail-section-content">
+                        <div class="info-row">
+                            <div class="info-icon">📍</div>
+                            <div class="info-text">
+                                <div class="info-label">Address</div>
+                                <div class="info-value" id="detail-address">123 Main Street<br>Indianapolis, IN 46204</div>
+                            </div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-icon">📞</div>
+                            <div class="info-text">
+                                <div class="info-label">Phone</div>
+                                <div class="info-value" id="detail-phone">(317) 555-0123</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hours Section -->
+                <div class="detail-section">
+                    <div class="detail-section-header">
+                        <h2 class="detail-section-title">Hours</h2>
+                    </div>
+                    <div class="detail-section-content">
+                        <div class="hours-grid" id="detail-hours">
+                            <div class="hours-day">Mon</div>
+                            <div class="hours-time">11:00 AM - 10:00 PM</div>
+                            <div class="hours-day">Tue</div>
+                            <div class="hours-time">11:00 AM - 10:00 PM</div>
+                            <div class="hours-day">Wed</div>
+                            <div class="hours-time">11:00 AM - 10:00 PM</div>
+                            <div class="hours-day today">Thu</div>
+                            <div class="hours-time today">11:00 AM - 10:00 PM</div>
+                            <div class="hours-day">Fri</div>
+                            <div class="hours-time">11:00 AM - 11:00 PM</div>
+                            <div class="hours-day">Sat</div>
+                            <div class="hours-time">12:00 PM - 11:00 PM</div>
+                            <div class="hours-day">Sun</div>
+                            <div class="hours-time">12:00 PM - 9:00 PM</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons-grid">
+                    <button class="action-button-secondary">
+                        <span>📞</span>
+                        <span>Call</span>
+                    </button>
+                    <button class="action-button-secondary action-button-favorite">
+                        <span>⭐</span>
+                        <span>Favorite</span>
+                    </button>
+                </div>
+
+                <button class="action-button">
+                    <span>🗺️</span>
+                    <span>Get Directions</span>
+                </button>
+
+                <!-- Dishes to Try Section -->
+                <div class="detail-section">
+                    <div class="detail-section-header">
+                        <h2 class="detail-section-title">Dishes to Try</h2>
+                    </div>
+                    <div class="detail-section-content" id="detail-dishes">
+                        <div class="dish-item">
+                            <div class="dish-name">Margherita Pizza</div>
+                            <div class="dish-description">Classic thin crust with fresh mozzarella, basil, and San Marzano tomatoes</div>
+                        </div>
+                        <div class="dish-item">
+                            <div class="dish-name">Pepperoni Special</div>
+                            <div class="dish-description">Double pepperoni with extra cheese and house-made marinara</div>
+                        </div>
+                        <div class="dish-item">
+                            <div class="dish-name">Garlic Knots</div>
+                            <div class="dish-description">Fresh-baked knots brushed with garlic butter and parmesan</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Section -->
+                <div class="detail-section">
+                    <div class="detail-section-header">
+                        <h2 class="detail-section-title">Notes</h2>
+                    </div>
+                    <div class="detail-section-content">
+                        <textarea class="notes-textarea" placeholder="Add your notes about this restaurant...&#10;&#10;(e.g., favorite dishes, parking info, best time to visit)"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAB -->
+        <div class="fab" id="fab">+</div>
+
+        <!-- Tab Bar -->
+        <nav class="tab-bar">
+            <div class="tab-item active" onclick="switchScreen('today')">
+                <span class="tab-icon">📊</span>
+                <span class="tab-label">Today</span>
+            </div>
+            <div class="tab-item" onclick="switchScreen('ideas')">
+                <span class="tab-icon">💡</span>
+                <span class="tab-label">Ideas</span>
+            </div>
+            <div class="tab-item" onclick="switchScreen('food')">
+                <span class="tab-icon">🍴</span>
+                <span class="tab-label">Food</span>
+            </div>
+            <div class="tab-item" onclick="switchScreen('tasks')">
+                <span class="tab-icon">✓</span>
+                <span class="tab-label">To Do</span>
+            </div>
+            <div class="tab-item" onclick="switchScreen('shop')">
+                <span class="tab-icon">🛒</span>
+                <span class="tab-label">Shop</span>
+            </div>
+            <div class="tab-item" onclick="switchScreen('calendar')">
+                <span class="tab-icon">📅</span>
+                <span class="tab-label">Cal</span>
+            </div>
+            <div class="tab-item" onclick="switchScreen('gifts')">
+                <span class="tab-icon">🎁</span>
+                <span class="tab-label">Gifts</span>
+            </div>
+        </nav>
+    </div>
+
+    <script>
+        function switchScreen(screenId) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            // Show selected screen
+            document.getElementById('screen-' + screenId).classList.add('active');
+
+            // Update tab bar
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            const tabs = document.querySelectorAll('.tab-item');
+            const tabMap = { today: 0, ideas: 1, food: 2, tasks: 3, shop: 4, calendar: 5, gifts: 6 };
+            if (tabMap[screenId] !== undefined) {
+                tabs[tabMap[screenId]].classList.add('active');
+            }
+
+            // Show/hide FAB based on screen
+            const fab = document.getElementById('fab');
+            if (screenId === 'settings') {
+                fab.style.display = 'none';
+            } else {
+                fab.style.display = 'flex';
+            }
+        }
+
+        // Track current food view state
+        let currentFoodView = 'restaurants';
+        let currentRestaurantView = 'list';
+
+        function switchFoodView(view) {
+            const restaurantsTab = document.getElementById('restaurants-tab');
+            const recipesTab = document.getElementById('recipes-tab');
+            const restaurantsListView = document.getElementById('restaurants-list-view');
+            const restaurantsMapView = document.getElementById('restaurants-map-view');
+            const recipesView = document.getElementById('recipes-view');
+            const viewToggle = document.getElementById('restaurant-view-toggle');
+
+            // Update the current view
+            currentFoodView = view;
+
+            if (view === 'restaurants') {
+                // Activate restaurants tab
+                restaurantsTab.classList.add('active');
+                recipesTab.classList.remove('active');
+
+                // Show restaurants, hide recipes
+                recipesView.classList.add('hidden');
+                viewToggle.classList.remove('hidden');
+
+                // Show the current restaurant view (list or map)
+                if (currentRestaurantView === 'list') {
+                    restaurantsListView.classList.remove('hidden');
+                    restaurantsMapView.classList.add('hidden');
+                } else {
+                    restaurantsListView.classList.add('hidden');
+                    restaurantsMapView.classList.remove('hidden');
+                }
+            } else if (view === 'recipes') {
+                // Activate recipes tab
+                recipesTab.classList.add('active');
+                restaurantsTab.classList.remove('active');
+
+                // Show recipes, hide restaurants
+                restaurantsListView.classList.add('hidden');
+                restaurantsMapView.classList.add('hidden');
+                recipesView.classList.remove('hidden');
+                viewToggle.classList.add('hidden');
+            }
+        }
+
+        function toggleRestaurantView(view) {
+            const listView = document.getElementById('restaurants-list-view');
+            const mapView = document.getElementById('restaurants-map-view');
+            const toggleBtns = document.querySelectorAll('#restaurant-view-toggle .view-toggle-btn');
+
+            currentRestaurantView = view;
+
+            if (view === 'list') {
+                listView.classList.remove('hidden');
+                mapView.classList.add('hidden');
+                toggleBtns[0].classList.add('active');
+                toggleBtns[1].classList.remove('active');
+            } else {
+                listView.classList.add('hidden');
+                mapView.classList.remove('hidden');
+                toggleBtns[0].classList.remove('active');
+                toggleBtns[1].classList.add('active');
+            }
+        }
+
+        // Restaurant Detail View Functions
+        const restaurantData = {
+            joes: {
+                icon: '🍕',
+                name: "Joe's Pizza",
+                cuisine: 'Italian • Pizza',
+                price: '$$',
+                distance: '0.8 mi',
+                address: '123 Main Street<br>Indianapolis, IN 46204',
+                phone: '(317) 555-0123',
+                hours: `
+                    <div class="hours-day">Mon</div>
+                    <div class="hours-time">11:00 AM - 10:00 PM</div>
+                    <div class="hours-day">Tue</div>
+                    <div class="hours-time">11:00 AM - 10:00 PM</div>
+                    <div class="hours-day">Wed</div>
+                    <div class="hours-time">11:00 AM - 10:00 PM</div>
+                    <div class="hours-day today">Thu</div>
+                    <div class="hours-time today">11:00 AM - 10:00 PM</div>
+                    <div class="hours-day">Fri</div>
+                    <div class="hours-time">11:00 AM - 11:00 PM</div>
+                    <div class="hours-day">Sat</div>
+                    <div class="hours-time">12:00 PM - 11:00 PM</div>
+                    <div class="hours-day">Sun</div>
+                    <div class="hours-time">12:00 PM - 9:00 PM</div>
+                `,
+                dishes: [
+                    { name: 'Margherita Pizza', description: 'Classic thin crust with fresh mozzarella, basil, and San Marzano tomatoes' },
+                    { name: 'Pepperoni Special', description: 'Double pepperoni with extra cheese and house-made marinara' },
+                    { name: 'Garlic Knots', description: 'Fresh-baked knots brushed with garlic butter and parmesan' }
+                ]
+            },
+            ramen: {
+                icon: '🍜',
+                name: 'Ramen House',
+                cuisine: 'Japanese • Ramen',
+                price: '$$$',
+                distance: '1.2 mi',
+                address: '456 East Market Street<br>Indianapolis, IN 46204',
+                phone: '(317) 555-0456',
+                hours: `
+                    <div class="hours-day">Mon</div>
+                    <div class="hours-time">Closed</div>
+                    <div class="hours-day">Tue</div>
+                    <div class="hours-time">12:00 PM - 9:00 PM</div>
+                    <div class="hours-day">Wed</div>
+                    <div class="hours-time">12:00 PM - 9:00 PM</div>
+                    <div class="hours-day today">Thu</div>
+                    <div class="hours-time today">12:00 PM - 9:00 PM</div>
+                    <div class="hours-day">Fri</div>
+                    <div class="hours-time">12:00 PM - 10:00 PM</div>
+                    <div class="hours-day">Sat</div>
+                    <div class="hours-time">12:00 PM - 10:00 PM</div>
+                    <div class="hours-day">Sun</div>
+                    <div class="hours-time">12:00 PM - 9:00 PM</div>
+                `,
+                dishes: [
+                    { name: 'Tonkotsu Ramen', description: 'Rich pork bone broth with chashu pork, soft-boiled egg, and bamboo shoots' },
+                    { name: 'Spicy Miso Ramen', description: 'Miso-based broth with chili oil, ground pork, and fresh scallions' },
+                    { name: 'Gyoza', description: 'Pan-fried pork dumplings with ponzu dipping sauce' }
+                ]
+            },
+            taco: {
+                icon: '🌮',
+                name: 'Taco Loco',
+                cuisine: 'Mexican • Street Food',
+                price: '$',
+                distance: '0.4 mi',
+                address: '789 West Washington Street<br>Indianapolis, IN 46204',
+                phone: '(317) 555-0789',
+                hours: `
+                    <div class="hours-day">Mon</div>
+                    <div class="hours-time">10:00 AM - 8:00 PM</div>
+                    <div class="hours-day">Tue</div>
+                    <div class="hours-time">10:00 AM - 8:00 PM</div>
+                    <div class="hours-day">Wed</div>
+                    <div class="hours-time">10:00 AM - 8:00 PM</div>
+                    <div class="hours-day today">Thu</div>
+                    <div class="hours-time today">10:00 AM - 8:00 PM</div>
+                    <div class="hours-day">Fri</div>
+                    <div class="hours-time">10:00 AM - 9:00 PM</div>
+                    <div class="hours-day">Sat</div>
+                    <div class="hours-time">10:00 AM - 9:00 PM</div>
+                    <div class="hours-day">Sun</div>
+                    <div class="hours-time">11:00 AM - 7:00 PM</div>
+                `,
+                dishes: [
+                    { name: 'Carne Asada Tacos', description: 'Grilled steak with fresh cilantro, onions, and lime on corn tortillas' },
+                    { name: 'Al Pastor Tacos', description: 'Marinated pork with pineapple, cilantro, and salsa verde' },
+                    { name: 'Street Corn (Elote)', description: 'Grilled corn with mayo, cotija cheese, chili powder, and lime' }
+                ]
+            }
+        };
+
+        function showRestaurantDetail(restaurantId) {
+            const data = restaurantData[restaurantId];
+            if (!data) return;
+
+            // Update detail view content
+            document.getElementById('detail-icon').textContent = data.icon;
+            document.getElementById('detail-name').textContent = data.name;
+            document.getElementById('detail-cuisine').textContent = data.cuisine;
+            document.getElementById('detail-price').textContent = data.price;
+            document.getElementById('detail-distance').textContent = data.distance;
+            document.getElementById('detail-address').innerHTML = data.address;
+            document.getElementById('detail-phone').textContent = data.phone;
+            document.getElementById('detail-hours').innerHTML = data.hours;
+
+            // Update dishes section
+            const dishesContainer = document.getElementById('detail-dishes');
+            if (data.dishes && data.dishes.length > 0) {
+                dishesContainer.innerHTML = data.dishes.map(dish => `
+                    <div class="dish-item">
+                        <div class="dish-name">${dish.name}</div>
+                        <div class="dish-description">${dish.description}</div>
+                    </div>
+                `).join('');
+            }
+
+            // Show detail view
+            document.getElementById('restaurant-detail').classList.add('active');
+        }
+
+        function hideRestaurantDetail() {
+            document.getElementById('restaurant-detail').classList.remove('active');
+        }
+
+        // To Do Tab Switching (Tasks vs Activities)
+        function switchToDoTab(tab) {
+            const tabs = document.querySelectorAll('#todo-tabs .sub-tab');
+            const tasksView = document.getElementById('tasks-view');
+            const activitiesView = document.getElementById('activities-view');
+
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Show the appropriate view
+            if (tab === 'tasks') {
+                tasksView.classList.remove('hidden');
+                activitiesView.classList.add('hidden');
+            } else {
+                tasksView.classList.add('hidden');
+                activitiesView.classList.remove('hidden');
+            }
+        }
+
+        // Filter chips interaction
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Sub-tab interaction (generic)
+        document.querySelectorAll('.sub-tabs').forEach(tabGroup => {
+            tabGroup.querySelectorAll('.sub-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    tabGroup.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        });
+
+        // Calendar day selection
+        document.querySelectorAll('.calendar-day:not(.other-month)').forEach(day => {
+            day.addEventListener('click', function() {
+                document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        // Theme toggle
+        document.querySelectorAll('.theme-button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.theme-button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Ideas Screen (Neo-Brutalist)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .device-frame {
+            width: 430px;
+            height: 932px;
+            background: #000;
+            border-radius: 60px;
+            padding: 15px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 30px;
+            background: #000;
+            border-radius: 0 0 20px 20px;
+            z-index: 1000;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: #f5f5f4;
+            border-radius: 47px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .status-bar {
+            height: 54px;
+            background: #f5f5f4;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 30px 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .time {
+            color: #111827;
+        }
+
+        .status-icons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            color: #111827;
+        }
+
+        .app-header {
+            background: #ffffff;
+            border-bottom: 2px solid #111827;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: #111827;
+            border: 2px solid #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #ffffff;
+            font-size: 20px;
+        }
+
+        .household-selector {
+            background: #ffffff;
+            border: 2px solid #111827;
+            padding: 8px 16px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .household-selector:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            background: #0ea5e9;
+            border: 2px solid #111827;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .avatar:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .settings-btn {
+            width: 36px;
+            height: 36px;
+            background: #ffffff;
+            border: 2px solid #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .settings-btn:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .screen-header {
+            background: #ffffff;
+            border-bottom: 2px solid #111827;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .screen-title {
+            font-size: 28px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #111827;
+        }
+
+        .add-btn {
+            width: 44px;
+            height: 44px;
+            background: #22c55e;
+            border: 2px solid #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .add-btn:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .toggle-tabs {
+            display: flex;
+            gap: 0;
+            padding: 20px;
+            background: #f5f5f4;
+        }
+
+        .toggle-tab {
+            flex: 1;
+            padding: 12px 24px;
+            background: #ffffff;
+            border: 2px solid #111827;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            color: #111827;
+        }
+
+        .toggle-tab:first-child {
+            border-right: none;
+        }
+
+        .toggle-tab.active {
+            background: #111827;
+            color: #ffffff;
+        }
+
+        .toggle-tab:not(.active):hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .content {
+            padding: 0 20px 100px;
+            overflow-y: auto;
+            height: calc(100% - 54px - 76px - 84px - 66px - 80px);
+        }
+
+        .ideas-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .idea-card {
+            background: #ffffff;
+            border: 2px solid #111827;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .idea-card:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .idea-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .idea-arrow {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .idea-content {
+            flex: 1;
+        }
+
+        .idea-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .idea-notes {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .swipe-indicator {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 80px;
+            background: #ef4444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: 700;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+            border-left: 2px solid #111827;
+        }
+
+        .idea-card:active .swipe-indicator {
+            transform: translateX(0);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 40px;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .empty-text {
+            font-size: 14px;
+            color: #6b7280;
+            font-family: 'IBM Plex Mono', monospace;
+            line-height: 1.6;
+        }
+
+        .fab {
+            position: absolute;
+            bottom: 100px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: #0ea5e9;
+            border: 2px solid #111827;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 28px;
+            font-weight: 700;
+            color: #111827;
+            z-index: 100;
+        }
+
+        .fab:hover {
+            box-shadow: 4px 4px 0 #111827;
+            transform: translate(-2px, -2px);
+        }
+
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: #111827;
+            border-top: 2px solid #111827;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px 20px 20px;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 8px 12px;
+        }
+
+        .tab-icon {
+            font-size: 24px;
+            color: #9ca3af;
+            transition: all 0.2s;
+        }
+
+        .tab-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #9ca3af;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+
+        .tab-item.active .tab-icon {
+            color: #0ea5e9;
+        }
+
+        .tab-item.active .tab-label {
+            color: #0ea5e9;
+        }
+
+        .tab-item:hover:not(.active) .tab-icon {
+            color: #d1d5db;
+        }
+
+        .tab-item:hover:not(.active) .tab-label {
+            color: #d1d5db;
+        }
+
+        /* Custom scrollbar */
+        .content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: #f5f5f4;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: #111827;
+            border: 2px solid #f5f5f4;
+        }
+
+        /* Category badge */
+        .category-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #fbbf24;
+            border: 2px solid #111827;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 8px;
+        }
+
+        /* Animation for new ideas */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .idea-card {
+            animation: slideIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="device-frame">
+        <div class="device-notch"></div>
+        <div class="screen">
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div class="time">9:41</div>
+                <div class="status-icons">
+                    <span>&#128246;</span>
+                    <span>&#128246;</span>
+                    <span>&#128267;</span>
+                </div>
+            </div>
+
+            <!-- App Header -->
+            <div class="app-header">
+                <div class="logo-section">
+                    <div class="logo">L</div>
+                    <div class="household-selector">
+                        <span>Home</span>
+                        <span>&#9660;</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <div class="avatar">M</div>
+                    <div class="settings-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.5">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m0-12l5.2 3m-10.4 0L12 7m0 10l5.2 3m-10.4 0L12 17"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen Header -->
+            <div class="screen-header">
+                <h1 class="screen-title">Ideas</h1>
+                <div class="add-btn">+</div>
+            </div>
+
+            <!-- Toggle Tabs -->
+            <div class="toggle-tabs">
+                <div class="toggle-tab active">Personal</div>
+                <div class="toggle-tab">Household</div>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+                <div class="ideas-list">
+                    <!-- Idea Card 1 -->
+                    <div class="idea-card">
+                        <div class="idea-header">
+                            <div class="idea-arrow">→</div>
+                            <div class="idea-content">
+                                <div class="idea-title">Weekend camping trip to Brown County</div>
+                                <div class="idea-notes">Check availability for late September, reserve campsite #12</div>
+                            </div>
+                        </div>
+                        <div class="swipe-indicator">
+                            <span>🗑️</span>
+                        </div>
+                    </div>
+
+                    <!-- Idea Card 2 -->
+                    <div class="idea-card">
+                        <div class="idea-header">
+                            <div class="idea-arrow">→</div>
+                            <div class="idea-content">
+                                <div class="idea-title">Learn to make homemade pasta</div>
+                                <div class="idea-notes">Look up Italian cooking classes or YouTube tutorials</div>
+                            </div>
+                        </div>
+                        <div class="swipe-indicator">
+                            <span>🗑️</span>
+                        </div>
+                    </div>
+
+                    <!-- Idea Card 3 -->
+                    <div class="idea-card">
+                        <div class="idea-header">
+                            <div class="idea-arrow">→</div>
+                            <div class="idea-content">
+                                <div class="idea-title">Start a book club with neighbors</div>
+                            </div>
+                        </div>
+                        <div class="swipe-indicator">
+                            <span>🗑️</span>
+                        </div>
+                    </div>
+
+                    <!-- Idea Card 4 -->
+                    <div class="idea-card">
+                        <div class="idea-header">
+                            <div class="idea-arrow">→</div>
+                            <div class="idea-content">
+                                <div class="idea-title">Organize garage and donate old items</div>
+                                <div class="idea-notes">Goodwill pickup available on Saturdays</div>
+                            </div>
+                        </div>
+                        <div class="swipe-indicator">
+                            <span>🗑️</span>
+                        </div>
+                    </div>
+
+                    <!-- Idea Card 5 -->
+                    <div class="idea-card">
+                        <div class="idea-header">
+                            <div class="idea-arrow">→</div>
+                            <div class="idea-content">
+                                <div class="idea-title">Research solar panel installation</div>
+                                <div class="idea-notes">Get quotes from 3 companies, check tax incentives</div>
+                            </div>
+                        </div>
+                        <div class="swipe-indicator">
+                            <span>🗑️</span>
+                        </div>
+                    </div>
+
+                    <!-- Idea Card 6 -->
+                    <div class="idea-card">
+                        <div class="idea-header">
+                            <div class="idea-arrow">→</div>
+                            <div class="idea-content">
+                                <div class="idea-title">Plan surprise birthday party for Sarah</div>
+                            </div>
+                        </div>
+                        <div class="swipe-indicator">
+                            <span>🗑️</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State (hidden by default, uncomment to show) -->
+                <!-- <div class="empty-state">
+                    <div class="empty-icon">💡</div>
+                    <div class="empty-title">No Ideas Yet</div>
+                    <div class="empty-text">Tap the + button to capture your brilliant ideas and thoughts</div>
+                </div> -->
+            </div>
+
+            <!-- FAB -->
+            <div class="fab">+</div>
+
+            <!-- Tab Bar -->
+            <div class="tab-bar">
+                <div class="tab-item">
+                    <div class="tab-icon">📅</div>
+                    <div class="tab-label">Today</div>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">📋</div>
+                    <div class="tab-label">Tasks</div>
+                </div>
+                <div class="tab-item active">
+                    <div class="tab-icon">💡</div>
+                    <div class="tab-label">Ideas</div>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">👥</div>
+                    <div class="tab-label">People</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle tabs functionality
+        document.querySelectorAll('.toggle-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.toggle-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Tab bar navigation
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Household selector
+        document.querySelector('.household-selector').addEventListener('click', function() {
+            alert('Household selector clicked - would show dropdown menu');
+        });
+
+        // Avatar click
+        document.querySelector('.avatar').addEventListener('click', function() {
+            alert('Avatar clicked - would show user profile');
+        });
+
+        // Settings button
+        document.querySelector('.settings-btn').addEventListener('click', function() {
+            alert('Settings clicked - would navigate to settings screen');
+        });
+
+        // Add button (header)
+        document.querySelector('.add-btn').addEventListener('click', function() {
+            alert('Add idea button clicked - would show new idea form');
+        });
+
+        // FAB
+        document.querySelector('.fab').addEventListener('click', function() {
+            alert('FAB clicked - would show quick add idea dialog');
+        });
+
+        // Idea card click
+        document.querySelectorAll('.idea-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('swipe-indicator')) {
+                    alert('Idea clicked - would show idea details/edit screen');
+                }
+            });
+        });
+
+        // Swipe to delete simulation
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.querySelectorAll('.idea-card').forEach(card => {
+            card.addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+            });
+
+            card.addEventListener('touchend', function(e) {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe(this);
+            });
+
+            card.addEventListener('mousedown', function(e) {
+                touchStartX = e.screenX;
+            });
+
+            card.addEventListener('mouseup', function(e) {
+                touchEndX = e.screenX;
+                handleSwipe(this);
+            });
+        });
+
+        function handleSwipe(element) {
+            if (touchStartX - touchEndX > 50) {
+                // Swiped left
+                if (confirm('Delete this idea?')) {
+                    element.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => element.remove(), 300);
+                }
+            }
+        }
+
+        // Add slide out animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideOut {
+                to {
+                    opacity: 0;
+                    transform: translateX(-100%);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

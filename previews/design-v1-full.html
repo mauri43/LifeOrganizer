@@ -1,0 +1,2014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Soft Pastel Calm (Full)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #050816;
+            --bg-card: #0f172a;
+            --bg-card-hover: #1e293b;
+            --accent-primary: #38bdf8;
+            --accent-secondary: #a855f7;
+            --accent-success: #22c55e;
+            --accent-warning: #f97316;
+            --accent-danger: #ef4444;
+            --accent-pink: #ec4899;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --surface-muted: #1e293b;
+            --surface-darker: #111827;
+            --tab-bar-bg: #020617;
+            --border-subtle: #1f2937;
+            --border-active: #334155;
+            --shadow-card: rgba(15,23,42,0.75);
+            --shadow-fab: rgba(56,189,248,0.45);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0c0c1d 0%, #1a1a2e 50%, #0f0f23 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .page-background {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(56,189,248,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(168,85,247,0.08) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .device-frame {
+            width: 430px;
+            height: 932px;
+            background: var(--bg-app);
+            border-radius: 44px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 0 12px #1a1a2e, 0 0 0 14px #2d2d44, 0 50px 100px rgba(0,0,0,0.5);
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 160px; height: 34px;
+            background: #000;
+            border-radius: 0 0 24px 24px;
+            z-index: 100;
+        }
+
+        /* Screens */
+        .screen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 100px;
+            scrollbar-width: none;
+            display: none;
+            animation: fadeIn 250ms ease-out;
+        }
+        .screen::-webkit-scrollbar { display: none; }
+        .screen.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header */
+        .app-header {
+            padding: 54px 20px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-app);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 20px; height: 20px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .logo-text {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text-primary);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .icon-btn {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            background: var(--surface-muted);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 200ms ease-out;
+        }
+
+        .icon-btn:hover { background: var(--bg-card-hover); }
+
+        .icon-btn svg {
+            width: 20px; height: 20px;
+            stroke: var(--text-secondary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Page Header */
+        .page-header {
+            padding: 8px 20px 20px;
+            background: var(--bg-app);
+        }
+
+        .page-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Content */
+        .content { padding: 0 20px; }
+
+        /* Section */
+        .section { margin-bottom: 28px; }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .section-action {
+            font-size: 13px;
+            color: var(--accent-primary);
+            cursor: pointer;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 200ms ease-out;
+        }
+
+        .card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-active);
+            transform: translateY(-2px);
+        }
+
+        .card:active { transform: scale(0.98); }
+
+        /* Weather Card */
+        .weather-card {
+            background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .weather-card::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -30%;
+            width: 200px; height: 200px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .weather-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .weather-location {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 8px;
+        }
+
+        .weather-temp {
+            font-family: 'Poppins', sans-serif;
+            font-size: 56px;
+            font-weight: 700;
+            color: white;
+            line-height: 1;
+        }
+
+        .weather-icon {
+            width: 72px; height: 72px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .weather-icon svg {
+            width: 40px; height: 40px;
+            stroke: white;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .weather-condition {
+            font-size: 16px;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .weather-highlow {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        /* Activity Card */
+        .activity-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .activity-time {
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-primary);
+            min-width: 60px;
+        }
+
+        .activity-info { flex: 1; }
+
+        .activity-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .activity-location {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .category-pill {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .category-pill.work { background: rgba(56,189,248,0.2); color: var(--accent-primary); }
+        .category-pill.personal { background: rgba(168,85,247,0.2); color: var(--accent-secondary); }
+        .category-pill.health { background: rgba(34,197,94,0.2); color: var(--accent-success); }
+        .category-pill.family { background: rgba(249,115,22,0.2); color: var(--accent-warning); }
+
+        /* Task Card */
+        .task-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+
+        .task-checkbox {
+            width: 22px; height: 22px;
+            border: 2px solid var(--border-active);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 200ms ease-out;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .task-checkbox:hover { border-color: var(--accent-primary); }
+
+        .task-checkbox.checked {
+            background: var(--accent-success);
+            border-color: var(--accent-success);
+        }
+
+        .task-checkbox svg {
+            width: 14px; height: 14px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+        }
+
+        .task-checkbox.checked svg { opacity: 1; }
+
+        .task-info { flex: 1; }
+
+        .task-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .priority-tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .priority-tag.high { background: rgba(239,68,68,0.2); color: var(--accent-danger); }
+        .priority-tag.medium { background: rgba(249,115,22,0.2); color: var(--accent-warning); }
+        .priority-tag.low { background: rgba(34,197,94,0.2); color: var(--accent-success); }
+
+        /* Ideas Screen */
+        .ideas-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .ideas-toggle-btn {
+            flex: 1;
+            padding: 12px;
+            background: var(--surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 200ms;
+        }
+
+        .ideas-toggle-btn.active {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-color: transparent;
+            color: white;
+        }
+
+        .idea-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+
+        .idea-icon {
+            width: 44px; height: 44px;
+            background: var(--surface-muted);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .idea-icon svg {
+            width: 22px; height: 22px;
+            stroke: var(--accent-secondary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .idea-content { flex: 1; }
+
+        .idea-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .idea-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .idea-tags {
+            display: flex;
+            gap: 6px;
+        }
+
+        .idea-tag {
+            padding: 3px 8px;
+            background: var(--surface-darker);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Restaurant Card */
+        .restaurant-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .restaurant-image {
+            width: 70px; height: 70px;
+            background: linear-gradient(135deg, var(--surface-muted), var(--surface-darker));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .restaurant-image svg {
+            width: 30px; height: 30px;
+            stroke: var(--accent-warning);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .restaurant-info { flex: 1; }
+
+        .restaurant-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .restaurant-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .restaurant-tags {
+            display: flex;
+            gap: 6px;
+        }
+
+        .restaurant-tag {
+            padding: 3px 8px;
+            background: var(--surface-darker);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .restaurant-rating {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--accent-warning);
+        }
+
+        .restaurant-rating svg {
+            width: 14px; height: 14px;
+            fill: var(--accent-warning);
+            stroke: none;
+        }
+
+        /* Recipe Card */
+        .recipe-card {
+            display: flex;
+            gap: 14px;
+        }
+
+        .recipe-image {
+            width: 100px; height: 100px;
+            background: linear-gradient(135deg, var(--surface-muted), var(--surface-darker));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .recipe-image svg {
+            width: 40px; height: 40px;
+            stroke: var(--accent-warning);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .recipe-info { flex: 1; }
+
+        .recipe-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .recipe-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .recipe-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .recipe-tag {
+            padding: 3px 8px;
+            background: var(--surface-darker);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .recipe-tag.source {
+            background: rgba(56,189,248,0.2);
+            color: var(--accent-primary);
+        }
+
+        .add-to-groceries {
+            padding: 8px 14px;
+            background: var(--accent-success);
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 200ms;
+        }
+
+        .add-to-groceries:hover {
+            background: var(--accent-primary);
+            transform: scale(1.02);
+        }
+
+        /* Grocery Card */
+        .grocery-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .grocery-checkbox {
+            width: 24px; height: 24px;
+            border: 2px solid var(--border-active);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 200ms;
+        }
+
+        .grocery-checkbox.checked {
+            background: var(--accent-success);
+            border-color: var(--accent-success);
+        }
+
+        .grocery-checkbox svg {
+            width: 14px; height: 14px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+        }
+
+        .grocery-checkbox.checked svg { opacity: 1; }
+
+        .grocery-info { flex: 1; }
+
+        .grocery-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .grocery-detail {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .grocery-qty {
+            padding: 6px 12px;
+            background: var(--surface-muted);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Gift Card */
+        .gift-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .gift-avatar {
+            width: 50px; height: 50px;
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .gift-info { flex: 1; }
+
+        .gift-person {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .gift-occasion {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .gift-date {
+            font-size: 12px;
+            color: var(--accent-warning);
+            font-weight: 500;
+        }
+
+        .gift-ideas-count {
+            padding: 6px 12px;
+            background: var(--surface-muted);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .gift-ideas-count span {
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        /* Calendar */
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .calendar-month {
+            font-family: 'Poppins', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .calendar-nav button {
+            width: 36px; height: 36px;
+            background: var(--surface-muted);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-nav button svg {
+            width: 18px; height: 18px;
+            stroke: var(--text-secondary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 24px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 8px 0;
+            text-transform: uppercase;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 150ms;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            background: var(--surface-muted);
+        }
+
+        .calendar-day.today {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            font-weight: 600;
+        }
+
+        .calendar-day.has-events::after {
+            content: '';
+            position: absolute;
+            bottom: 6px;
+            width: 4px; height: 4px;
+            background: var(--accent-warning);
+            border-radius: 50%;
+        }
+
+        .calendar-day.other-month {
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        /* Upcoming Events */
+        .event-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .event-date-box {
+            width: 50px;
+            background: var(--surface-muted);
+            border-radius: 10px;
+            padding: 8px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .event-date-day {
+            font-family: 'Poppins', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .event-date-month {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .event-info { flex: 1; }
+
+        .event-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .event-time {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .event-color {
+            width: 4px;
+            height: 40px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .event-color.blue { background: var(--accent-primary); }
+        .event-color.purple { background: var(--accent-secondary); }
+        .event-color.orange { background: var(--accent-warning); }
+        .event-color.green { background: var(--accent-success); }
+
+        /* Filter Chips */
+        .filter-chips {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .filter-chip {
+            padding: 8px 16px;
+            background: var(--surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 150ms;
+        }
+
+        .filter-chip.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        /* Search Bar */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            margin-bottom: 20px;
+        }
+
+        .search-bar svg {
+            width: 20px; height: 20px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .search-bar input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            color: var(--text-primary);
+        }
+
+        .search-bar input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Map Placeholder */
+        .map-placeholder {
+            height: 200px;
+            background: var(--surface-darker);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-placeholder::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px),
+                linear-gradient(var(--border-subtle) 1px, transparent 1px);
+            background-size: 30px 30px;
+            opacity: 0.3;
+        }
+
+        .map-placeholder svg {
+            width: 48px; height: 48px;
+            stroke: var(--text-muted);
+            stroke-width: 1.5;
+            fill: none;
+            position: relative;
+            z-index: 1;
+        }
+
+        .map-pins {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+        }
+
+        .map-pin {
+            position: absolute;
+            width: 12px; height: 12px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            border: 2px solid var(--bg-app);
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: var(--surface-darker);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .view-toggle-btn {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 150ms;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .view-toggle-btn.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .view-toggle-btn svg {
+            width: 16px; height: 16px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Category Headers */
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .category-header h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .category-count {
+            padding: 2px 8px;
+            background: var(--surface-muted);
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        /* FAB */
+        .fab-container {
+            position: absolute;
+            bottom: 100px;
+            right: 20px;
+            z-index: 60;
+        }
+
+        .fab {
+            width: 56px; height: 56px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px var(--shadow-fab);
+            transition: all 200ms ease-out;
+        }
+
+        .fab:hover {
+            transform: scale(1.08);
+        }
+
+        .fab svg {
+            width: 28px; height: 28px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+            transition: transform 200ms ease-out;
+        }
+
+        .fab.open svg {
+            transform: rotate(45deg);
+        }
+
+        .fab-menu {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: all 200ms ease-out;
+        }
+
+        .fab-menu.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+
+        .fab-mini {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 150ms;
+            white-space: nowrap;
+        }
+
+        .fab-mini:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-primary);
+        }
+
+        .fab-mini svg {
+            width: 18px; height: 18px;
+            stroke: var(--accent-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .fab-mini span {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 85px;
+            background: var(--tab-bar-bg);
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding: 10px 4px 0;
+            z-index: 80;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 6px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 150ms;
+            position: relative;
+        }
+
+        .tab-item:hover {
+            background: var(--surface-muted);
+        }
+
+        .tab-item.active {
+            background: rgba(56,189,248,0.15);
+        }
+
+        .tab-item.active::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px; height: 3px;
+            background: var(--accent-primary);
+            border-radius: 0 0 3px 3px;
+        }
+
+        .tab-item svg {
+            width: 22px; height: 22px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .tab-item.active svg {
+            stroke: var(--accent-primary);
+        }
+
+        .tab-item span {
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        .tab-item.active span {
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .empty-state svg {
+            width: 64px; height: 64px;
+            stroke: var(--text-muted);
+            stroke-width: 1.5;
+            fill: none;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <div class="device-frame">
+        <div class="device-notch"></div>
+
+        <!-- Screen: Today -->
+        <div class="screen active" id="screen-today">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Organizer</span>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">A</div>
+                    <button class="icon-btn">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div class="page-subtitle">Thursday, Dec 11</div>
+                <div class="page-title">Good evening, Alex</div>
+            </div>
+
+            <div class="content">
+                <div class="weather-card">
+                    <div class="weather-top">
+                        <div>
+                            <div class="weather-location">San Francisco, CA</div>
+                            <div class="weather-temp">68°</div>
+                        </div>
+                        <div class="weather-icon">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                        </div>
+                    </div>
+                    <div class="weather-condition">Partly Cloudy</div>
+                    <div class="weather-highlow">H: 72° L: 58°</div>
+                </div>
+
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Today's Schedule</h2>
+                        <span class="section-action">See All</span>
+                    </div>
+
+                    <div class="card activity-card">
+                        <span class="activity-time">9:00 AM</span>
+                        <div class="activity-info">
+                            <div class="activity-title">Team Standup</div>
+                            <div class="activity-location">Zoom Meeting</div>
+                        </div>
+                        <span class="category-pill work">Work</span>
+                    </div>
+
+                    <div class="card activity-card">
+                        <span class="activity-time">12:30 PM</span>
+                        <div class="activity-info">
+                            <div class="activity-title">Lunch with Sarah</div>
+                            <div class="activity-location">Cafe Luna</div>
+                        </div>
+                        <span class="category-pill personal">Personal</span>
+                    </div>
+
+                    <div class="card activity-card">
+                        <span class="activity-time">3:00 PM</span>
+                        <div class="activity-info">
+                            <div class="activity-title">Gym Session</div>
+                            <div class="activity-location">FitLife Gym</div>
+                        </div>
+                        <span class="category-pill health">Health</span>
+                    </div>
+
+                    <div class="card activity-card">
+                        <span class="activity-time">6:30 PM</span>
+                        <div class="activity-info">
+                            <div class="activity-title">Family Dinner</div>
+                            <div class="activity-location">Home</div>
+                        </div>
+                        <span class="category-pill family">Family</span>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Tasks Due Today</h2>
+                        <span class="section-action">View All</span>
+                    </div>
+
+                    <div class="card task-card">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Review Q4 budget proposal</div>
+                            <div class="task-meta">
+                                <span>Due 5:00 PM</span>
+                                <span class="priority-tag high">High</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card task-card">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Prepare grocery list for weekend</div>
+                            <div class="task-meta">
+                                <span>Due 8:00 PM</span>
+                                <span class="priority-tag medium">Med</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card task-card">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Order birthday gift for Mom</div>
+                            <div class="task-meta">
+                                <span>Due 11:59 PM</span>
+                                <span class="priority-tag low">Low</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Screen: Ideas -->
+        <div class="screen" id="screen-ideas">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Organizer</span>
+                </div>
+                <div class="header-right">
+                    <button class="icon-btn">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div class="page-title">Ideas</div>
+                <div class="page-subtitle">Capture your inspiration</div>
+            </div>
+
+            <div class="content">
+                <div class="ideas-toggle">
+                    <button class="ideas-toggle-btn active">Personal</button>
+                    <button class="ideas-toggle-btn">Household</button>
+                </div>
+
+                <div class="card idea-card">
+                    <div class="idea-icon">
+                        <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    </div>
+                    <div class="idea-content">
+                        <div class="idea-title">Learn guitar basics</div>
+                        <div class="idea-desc">Start with acoustic, learn basic chords first</div>
+                        <div class="idea-tags">
+                            <span class="idea-tag">Hobby</span>
+                            <span class="idea-tag">Music</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card idea-card">
+                    <div class="idea-icon">
+                        <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    </div>
+                    <div class="idea-content">
+                        <div class="idea-title">Start a personal blog</div>
+                        <div class="idea-desc">Write about productivity and minimalism</div>
+                        <div class="idea-tags">
+                            <span class="idea-tag">Writing</span>
+                            <span class="idea-tag">Creative</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card idea-card">
+                    <div class="idea-icon">
+                        <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    </div>
+                    <div class="idea-content">
+                        <div class="idea-title">Weekend hiking trip to Yosemite</div>
+                        <div class="idea-desc">Plan for spring, book cabin early</div>
+                        <div class="idea-tags">
+                            <span class="idea-tag">Travel</span>
+                            <span class="idea-tag">Outdoors</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card idea-card">
+                    <div class="idea-icon">
+                        <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    </div>
+                    <div class="idea-content">
+                        <div class="idea-title">Build a standing desk</div>
+                        <div class="idea-desc">Use reclaimed wood, motorized lift</div>
+                        <div class="idea-tags">
+                            <span class="idea-tag">DIY</span>
+                            <span class="idea-tag">Workspace</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Restaurants -->
+        <div class="screen" id="screen-restaurants">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Organizer</span>
+                </div>
+                <div class="header-right">
+                    <button class="icon-btn">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div class="page-title">Restaurants</div>
+                <div class="page-subtitle">Places to try</div>
+            </div>
+
+            <div class="content">
+                <div class="view-toggle">
+                    <button class="view-toggle-btn active">
+                        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        List
+                    </button>
+                    <button class="view-toggle-btn">
+                        <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        Map
+                    </button>
+                </div>
+
+                <div class="filter-chips">
+                    <span class="filter-chip active">All</span>
+                    <span class="filter-chip">Italian</span>
+                    <span class="filter-chip">Japanese</span>
+                    <span class="filter-chip">Mexican</span>
+                    <span class="filter-chip">Thai</span>
+                </div>
+
+                <div class="card restaurant-card">
+                    <div class="restaurant-image">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    </div>
+                    <div class="restaurant-info">
+                        <div class="restaurant-name">Cafe Luna</div>
+                        <div class="restaurant-meta">Italian • $$ • 0.8 mi</div>
+                        <div class="restaurant-tags">
+                            <span class="restaurant-rating">
+                                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                4.5
+                            </span>
+                            <span class="restaurant-tag">Pasta</span>
+                            <span class="restaurant-tag">Wine</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card restaurant-card">
+                    <div class="restaurant-image">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    </div>
+                    <div class="restaurant-info">
+                        <div class="restaurant-name">Sakura Sushi</div>
+                        <div class="restaurant-meta">Japanese • $$$ • 1.2 mi</div>
+                        <div class="restaurant-tags">
+                            <span class="restaurant-rating">
+                                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                4.8
+                            </span>
+                            <span class="restaurant-tag">Omakase</span>
+                            <span class="restaurant-tag">Sake</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card restaurant-card">
+                    <div class="restaurant-image">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    </div>
+                    <div class="restaurant-info">
+                        <div class="restaurant-name">Taqueria El Sol</div>
+                        <div class="restaurant-meta">Mexican • $ • 0.5 mi</div>
+                        <div class="restaurant-tags">
+                            <span class="restaurant-rating">
+                                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                4.3
+                            </span>
+                            <span class="restaurant-tag">Tacos</span>
+                            <span class="restaurant-tag">Casual</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Recipes -->
+        <div class="screen" id="screen-recipes">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Organizer</span>
+                </div>
+                <div class="header-right">
+                    <button class="icon-btn">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div class="page-title">Recipes</div>
+                <div class="page-subtitle">Cook something delicious</div>
+            </div>
+
+            <div class="content">
+                <div class="search-bar">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" placeholder="Search recipes...">
+                </div>
+
+                <div class="filter-chips">
+                    <span class="filter-chip active">All</span>
+                    <span class="filter-chip">Quick</span>
+                    <span class="filter-chip">Healthy</span>
+                    <span class="filter-chip">Dessert</span>
+                </div>
+
+                <div class="card recipe-card">
+                    <div class="recipe-image">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    </div>
+                    <div class="recipe-info">
+                        <div class="recipe-title">Creamy Tuscan Pasta</div>
+                        <div class="recipe-meta">30 min • Easy • 4 servings</div>
+                        <div class="recipe-tags">
+                            <span class="recipe-tag source">TikTok</span>
+                            <span class="recipe-tag">Italian</span>
+                        </div>
+                        <button class="add-to-groceries">+ Add to Groceries</button>
+                    </div>
+                </div>
+
+                <div class="card recipe-card">
+                    <div class="recipe-image">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    </div>
+                    <div class="recipe-info">
+                        <div class="recipe-title">Korean Fried Chicken</div>
+                        <div class="recipe-meta">45 min • Medium • 6 servings</div>
+                        <div class="recipe-tags">
+                            <span class="recipe-tag source">YouTube</span>
+                            <span class="recipe-tag">Korean</span>
+                        </div>
+                        <button class="add-to-groceries">+ Add to Groceries</button>
+                    </div>
+                </div>
+
+                <div class="card recipe-card">
+                    <div class="recipe-image">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    </div>
+                    <div class="recipe-info">
+                        <div class="recipe-title">Avocado Toast Deluxe</div>
+                        <div class="recipe-meta">10 min • Easy • 2 servings</div>
+                        <div class="recipe-tags">
+                            <span class="recipe-tag source">Instagram</span>
+                            <span class="recipe-tag">Breakfast</span>
+                        </div>
+                        <button class="add-to-groceries">+ Add to Groceries</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Groceries -->
+        <div class="screen" id="screen-groceries">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Organizer</span>
+                </div>
+                <div class="header-right">
+                    <button class="icon-btn">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div class="page-title">Groceries</div>
+                <div class="page-subtitle">12 items to buy</div>
+            </div>
+
+            <div class="content">
+                <div class="category-header">
+                    <h3>Produce</h3>
+                    <span class="category-count">4</span>
+                </div>
+
+                <div class="card grocery-card">
+                    <div class="grocery-checkbox" onclick="this.classList.toggle('checked')">
+                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div class="grocery-info">
+                        <div class="grocery-name">Avocados</div>
+                        <div class="grocery-detail">Ripe, for guacamole</div>
+                    </div>
+                    <span class="grocery-qty">4</span>
+                </div>
+
+                <div class="card grocery-card">
+                    <div class="grocery-checkbox" onclick="this.classList.toggle('checked')">
+                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div class="grocery-info">
+                        <div class="grocery-name">Cherry Tomatoes</div>
+                        <div class="grocery-detail">1 pint</div>
+                    </div>
+                    <span class="grocery-qty">1</span>
+                </div>
+
+                <div class="card grocery-card">
+                    <div class="grocery-checkbox" onclick="this.classList.toggle('checked')">
+                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div class="grocery-info">
+                        <div class="grocery-name">Fresh Basil</div>
+                        <div class="grocery-detail">1 bunch</div>
+                    </div>
+                    <span class="grocery-qty">1</span>
+                </div>
+
+                <div class="category-header" style="margin-top: 24px;">
+                    <h3>Dairy</h3>
+                    <span class="category-count">3</span>
+                </div>
+
+                <div class="card grocery-card">
+                    <div class="grocery-checkbox" onclick="this.classList.toggle('checked')">
+                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div class="grocery-info">
+                        <div class="grocery-name">Parmesan Cheese</div>
+                        <div class="grocery-detail">Wedge, for grating</div>
+                    </div>
+                    <span class="grocery-qty">1</span>
+                </div>
+
+                <div class="card grocery-card">
+                    <div class="grocery-checkbox" onclick="this.classList.toggle('checked')">
+                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div class="grocery-info">
+                        <div class="grocery-name">Heavy Cream</div>
+                        <div class="grocery-detail">1 pint</div>
+                    </div>
+                    <span class="grocery-qty">1</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Gifts -->
+        <div class="screen" id="screen-gifts">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Organizer</span>
+                </div>
+                <div class="header-right">
+                    <button class="icon-btn">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div class="page-title">Gifts</div>
+                <div class="page-subtitle">Upcoming occasions</div>
+            </div>
+
+            <div class="content">
+                <div class="section-header">
+                    <h2 class="section-title">Coming Up</h2>
+                </div>
+
+                <div class="card gift-card">
+                    <div class="gift-avatar">M</div>
+                    <div class="gift-info">
+                        <div class="gift-person">Mom</div>
+                        <div class="gift-occasion">Birthday</div>
+                        <div class="gift-date">Dec 20 • 9 days</div>
+                    </div>
+                    <div class="gift-ideas-count"><span>3</span> ideas</div>
+                </div>
+
+                <div class="card gift-card">
+                    <div class="gift-avatar">S</div>
+                    <div class="gift-info">
+                        <div class="gift-person">Sarah</div>
+                        <div class="gift-occasion">Christmas</div>
+                        <div class="gift-date">Dec 25 • 14 days</div>
+                    </div>
+                    <div class="gift-ideas-count"><span>5</span> ideas</div>
+                </div>
+
+                <div class="card gift-card">
+                    <div class="gift-avatar">D</div>
+                    <div class="gift-info">
+                        <div class="gift-person">Dad</div>
+                        <div class="gift-occasion">Christmas</div>
+                        <div class="gift-date">Dec 25 • 14 days</div>
+                    </div>
+                    <div class="gift-ideas-count"><span>2</span> ideas</div>
+                </div>
+
+                <div class="card gift-card">
+                    <div class="gift-avatar">J</div>
+                    <div class="gift-info">
+                        <div class="gift-person">Jake</div>
+                        <div class="gift-occasion">Birthday</div>
+                        <div class="gift-date">Jan 15 • 35 days</div>
+                    </div>
+                    <div class="gift-ideas-count"><span>0</span> ideas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Calendar -->
+        <div class="screen" id="screen-calendar">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Organizer</span>
+                </div>
+                <div class="header-right">
+                    <button class="icon-btn">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content" style="padding-top: 10px;">
+                <div class="calendar-header">
+                    <div class="calendar-month">December 2024</div>
+                    <div class="calendar-nav">
+                        <button><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+                        <button><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+                    </div>
+                </div>
+
+                <div class="calendar-grid">
+                    <div class="calendar-day-header">Sun</div>
+                    <div class="calendar-day-header">Mon</div>
+                    <div class="calendar-day-header">Tue</div>
+                    <div class="calendar-day-header">Wed</div>
+                    <div class="calendar-day-header">Thu</div>
+                    <div class="calendar-day-header">Fri</div>
+                    <div class="calendar-day-header">Sat</div>
+
+                    <div class="calendar-day other-month">24</div>
+                    <div class="calendar-day other-month">25</div>
+                    <div class="calendar-day other-month">26</div>
+                    <div class="calendar-day other-month">27</div>
+                    <div class="calendar-day other-month">28</div>
+                    <div class="calendar-day other-month">29</div>
+                    <div class="calendar-day other-month">30</div>
+
+                    <div class="calendar-day">1</div>
+                    <div class="calendar-day">2</div>
+                    <div class="calendar-day">3</div>
+                    <div class="calendar-day has-events">4</div>
+                    <div class="calendar-day">5</div>
+                    <div class="calendar-day">6</div>
+                    <div class="calendar-day has-events">7</div>
+
+                    <div class="calendar-day">8</div>
+                    <div class="calendar-day">9</div>
+                    <div class="calendar-day has-events">10</div>
+                    <div class="calendar-day today has-events">11</div>
+                    <div class="calendar-day">12</div>
+                    <div class="calendar-day has-events">13</div>
+                    <div class="calendar-day">14</div>
+
+                    <div class="calendar-day">15</div>
+                    <div class="calendar-day">16</div>
+                    <div class="calendar-day">17</div>
+                    <div class="calendar-day">18</div>
+                    <div class="calendar-day">19</div>
+                    <div class="calendar-day has-events">20</div>
+                    <div class="calendar-day">21</div>
+
+                    <div class="calendar-day">22</div>
+                    <div class="calendar-day">23</div>
+                    <div class="calendar-day">24</div>
+                    <div class="calendar-day has-events">25</div>
+                    <div class="calendar-day">26</div>
+                    <div class="calendar-day">27</div>
+                    <div class="calendar-day">28</div>
+
+                    <div class="calendar-day">29</div>
+                    <div class="calendar-day">30</div>
+                    <div class="calendar-day has-events">31</div>
+                    <div class="calendar-day other-month">1</div>
+                    <div class="calendar-day other-month">2</div>
+                    <div class="calendar-day other-month">3</div>
+                    <div class="calendar-day other-month">4</div>
+                </div>
+
+                <div class="section-header">
+                    <h2 class="section-title">Upcoming Events</h2>
+                </div>
+
+                <div class="card event-card">
+                    <div class="event-color blue"></div>
+                    <div class="event-date-box">
+                        <div class="event-date-day">11</div>
+                        <div class="event-date-month">Dec</div>
+                    </div>
+                    <div class="event-info">
+                        <div class="event-title">Team Standup</div>
+                        <div class="event-time">9:00 AM - 9:30 AM</div>
+                    </div>
+                </div>
+
+                <div class="card event-card">
+                    <div class="event-color purple"></div>
+                    <div class="event-date-box">
+                        <div class="event-date-day">13</div>
+                        <div class="event-date-month">Dec</div>
+                    </div>
+                    <div class="event-info">
+                        <div class="event-title">Dinner with Parents</div>
+                        <div class="event-time">7:00 PM - 9:00 PM</div>
+                    </div>
+                </div>
+
+                <div class="card event-card">
+                    <div class="event-color orange"></div>
+                    <div class="event-date-box">
+                        <div class="event-date-day">20</div>
+                        <div class="event-date-month">Dec</div>
+                    </div>
+                    <div class="event-info">
+                        <div class="event-title">Mom's Birthday</div>
+                        <div class="event-time">All Day</div>
+                    </div>
+                </div>
+
+                <div class="card event-card">
+                    <div class="event-color green"></div>
+                    <div class="event-date-box">
+                        <div class="event-date-day">25</div>
+                        <div class="event-date-month">Dec</div>
+                    </div>
+                    <div class="event-info">
+                        <div class="event-title">Christmas</div>
+                        <div class="event-time">All Day</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAB -->
+        <div class="fab-container">
+            <div class="fab-menu" id="fabMenu">
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Task</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Activity</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span>Idea</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <span>Grocery</span>
+                </div>
+            </div>
+            <button class="fab" id="fab" onclick="toggleFab()">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+        </div>
+
+        <!-- Tab Bar -->
+        <nav class="tab-bar">
+            <div class="tab-item active" onclick="showScreen('today')">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Today</span>
+            </div>
+            <div class="tab-item" onclick="showScreen('ideas')">
+                <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                <span>Ideas</span>
+            </div>
+            <div class="tab-item" onclick="showScreen('restaurants')">
+                <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                <span>Food</span>
+            </div>
+            <div class="tab-item" onclick="showScreen('recipes')">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span>Recipes</span>
+            </div>
+            <div class="tab-item" onclick="showScreen('groceries')">
+                <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                <span>Shop</span>
+            </div>
+            <div class="tab-item" onclick="showScreen('gifts')">
+                <svg viewBox="0 0 24 24"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                <span>Gifts</span>
+            </div>
+            <div class="tab-item" onclick="showScreen('calendar')">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Cal</span>
+            </div>
+        </nav>
+    </div>
+
+    <script>
+        function showScreen(screenName) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            // Show selected screen
+            document.getElementById('screen-' + screenName).classList.add('active');
+
+            // Update tab bar
+            document.querySelectorAll('.tab-item').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            // Close FAB menu
+            document.getElementById('fab').classList.remove('open');
+            document.getElementById('fabMenu').classList.remove('open');
+        }
+
+        function toggleFab() {
+            document.getElementById('fab').classList.toggle('open');
+            document.getElementById('fabMenu').classList.toggle('open');
+        }
+    </script>
+</body>
+</html>

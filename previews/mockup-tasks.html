@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Tasks (Neo-Brutalist)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 430px;
+            height: 932px;
+            background: #000;
+            border-radius: 60px;
+            padding: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            position: relative;
+        }
+
+        .notch {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 30px;
+            background: #000;
+            border-radius: 0 0 20px 20px;
+            z-index: 1000;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: #f5f5f4;
+            border-radius: 48px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* App Container */
+        .app-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 50px;
+            background: #f5f5f4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            padding-top: 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* Header */
+        .header {
+            background: #ffffff;
+            border-bottom: 2px solid #111827;
+            padding: 16px 20px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #111827;
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            background: #f5f5f4;
+            border: 2px solid #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-2px, -2px);
+        }
+
+        /* Summary Stats */
+        .summary-stats {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .stat-chip {
+            flex: 1;
+            background: #f5f5f4;
+            border: 2px solid #111827;
+            padding: 8px 12px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #111827;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        .stat-chip.overdue .stat-number {
+            color: #ef4444;
+        }
+
+        /* Sub-tabs */
+        .sub-tabs {
+            display: flex;
+            gap: 8px;
+            background: #ffffff;
+            padding: 0 20px 16px;
+            border-bottom: 2px solid #111827;
+        }
+
+        .sub-tab {
+            flex: 1;
+            background: #f5f5f4;
+            border: 2px solid #111827;
+            padding: 12px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 14px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sub-tab.active {
+            background: #111827;
+            color: #ffffff;
+        }
+
+        .sub-tab:not(.active):hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-2px, -2px);
+        }
+
+        /* Filter Chips */
+        .filter-chips {
+            display: flex;
+            gap: 8px;
+            padding: 16px 20px;
+            overflow-x: auto;
+        }
+
+        .filter-chip {
+            background: #ffffff;
+            border: 2px solid #111827;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .filter-chip.active {
+            background: #111827;
+            color: #ffffff;
+        }
+
+        .filter-chip:not(.active):hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-2px, -2px);
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 0 20px 100px;
+            overflow-y: auto;
+        }
+
+        /* Task Card */
+        .task-card {
+            background: #ffffff;
+            border: 2px solid #111827;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .task-card:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-2px, -2px);
+        }
+
+        .task-card-content {
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #111827;
+            background: #ffffff;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 2px;
+        }
+
+        .task-checkbox.checked {
+            background: #22c55e;
+            border-color: #22c55e;
+        }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .task-main {
+            flex: 1;
+        }
+
+        .task-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .task-title.completed {
+            text-decoration: line-through;
+            color: #6b7280;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .task-time {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .task-time::before {
+            content: '⏰';
+            font-size: 14px;
+        }
+
+        .task-subtasks {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .task-subtasks::before {
+            content: '☐';
+            font-size: 12px;
+        }
+
+        .task-priority {
+            width: 8px;
+            align-self: stretch;
+            flex-shrink: 0;
+        }
+
+        .task-priority.high {
+            background: #ef4444;
+        }
+
+        .task-priority.medium {
+            background: #fbbf24;
+        }
+
+        .task-priority.low {
+            background: #22c55e;
+        }
+
+        /* Activity Card */
+        .activity-card {
+            background: #ffffff;
+            border: 2px solid #111827;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .activity-card:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-2px, -2px);
+        }
+
+        .activity-card-content {
+            display: flex;
+            align-items: stretch;
+        }
+
+        .activity-time-block {
+            background: #111827;
+            color: #ffffff;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 70px;
+            border-right: 2px solid #111827;
+        }
+
+        .activity-time {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .activity-duration {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 500;
+            margin-top: 4px;
+            opacity: 0.8;
+        }
+
+        .activity-main {
+            flex: 1;
+            padding: 16px;
+            position: relative;
+        }
+
+        .activity-category-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .activity-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 6px;
+        }
+
+        .activity-location {
+            font-size: 13px;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .activity-location::before {
+            content: '📍';
+            font-size: 12px;
+        }
+
+        /* Date Section Header */
+        .date-section {
+            font-size: 12px;
+            font-weight: 700;
+            color: #111827;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 20px 0 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #111827;
+        }
+
+        .date-section:first-child {
+            margin-top: 0;
+        }
+
+        /* FAB */
+        .fab {
+            position: fixed;
+            bottom: 100px;
+            right: calc(50% - 175px);
+            width: 60px;
+            height: 60px;
+            background: #0ea5e9;
+            border: 2px solid #111827;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 100;
+        }
+
+        .fab:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-2px, -2px);
+        }
+
+        /* Bottom Tab Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 430px;
+            background: #111827;
+            border-top: 2px solid #111827;
+            display: flex;
+            padding: 8px 0 24px;
+            z-index: 50;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 8px;
+            transition: all 0.2s;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            filter: grayscale(1);
+            opacity: 0.6;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-item.active .nav-icon {
+            filter: grayscale(0);
+            opacity: 1;
+        }
+
+        .nav-item.active .nav-label {
+            color: #ffffff;
+        }
+
+        .nav-item:not(.active):hover .nav-icon {
+            opacity: 0.8;
+        }
+
+        /* Hide scrollbar but keep functionality */
+        .app-container::-webkit-scrollbar,
+        .content-area::-webkit-scrollbar,
+        .filter-chips::-webkit-scrollbar {
+            display: none;
+        }
+
+        .app-container,
+        .content-area,
+        .filter-chips {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* View States */
+        .view-content {
+            display: none;
+        }
+
+        .view-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="iphone-frame">
+        <div class="notch"></div>
+        <div class="screen">
+            <div class="app-container">
+                <!-- Status Bar -->
+                <div class="status-bar">
+                    <span>9:41</span>
+                    <span>◆ ◆◆◆ 100%</span>
+                </div>
+
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-top">
+                        <div class="header-title">Tasks</div>
+                        <div class="header-actions">
+                            <div class="icon-btn">⚙</div>
+                            <div class="icon-btn">≡</div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Stats -->
+                    <div class="summary-stats">
+                        <div class="stat-chip">
+                            <div class="stat-number">12</div>
+                            <div class="stat-label">Tasks</div>
+                        </div>
+                        <div class="stat-chip">
+                            <div class="stat-number">7</div>
+                            <div class="stat-label">Completed</div>
+                        </div>
+                        <div class="stat-chip overdue">
+                            <div class="stat-number">3</div>
+                            <div class="stat-label">Overdue</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-tabs -->
+                <div class="sub-tabs">
+                    <div class="sub-tab active" onclick="switchView('tasks')">Tasks</div>
+                    <div class="sub-tab" onclick="switchView('activities')">Activities</div>
+                </div>
+
+                <!-- Filter Chips -->
+                <div class="filter-chips">
+                    <div class="filter-chip active" onclick="setFilter(this)">All</div>
+                    <div class="filter-chip" onclick="setFilter(this)">Today</div>
+                    <div class="filter-chip" onclick="setFilter(this)">Upcoming</div>
+                    <div class="filter-chip" onclick="setFilter(this)">Overdue</div>
+                </div>
+
+                <!-- Content Area -->
+                <div class="content-area">
+                    <!-- TASKS VIEW -->
+                    <div class="view-content active" id="tasks-view">
+                        <!-- Overdue Tasks -->
+                        <div class="date-section">⚠ Overdue</div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title">Submit quarterly tax documents</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">Dec 8, 5:00 PM</div>
+                                        <div class="task-subtasks">3/5 subtasks</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority high"></div>
+                            </div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title">Review project proposals</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">Dec 9, 2:00 PM</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority medium"></div>
+                            </div>
+                        </div>
+
+                        <!-- Today -->
+                        <div class="date-section">📅 Today - Dec 12</div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox checked" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title completed">Morning workout routine</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">7:00 AM</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority low"></div>
+                            </div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox checked" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title completed">Check emails and respond</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">9:00 AM</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority medium"></div>
+                            </div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title">Prepare presentation slides</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">2:00 PM</div>
+                                        <div class="task-subtasks">1/4 subtasks</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority high"></div>
+                            </div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title">Team sync meeting prep</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">4:30 PM</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority medium"></div>
+                            </div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title">Grocery shopping</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">6:00 PM</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority low"></div>
+                            </div>
+                        </div>
+
+                        <!-- Tomorrow -->
+                        <div class="date-section">📆 Tomorrow - Dec 13</div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title">Client presentation</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">10:00 AM</div>
+                                        <div class="task-subtasks">0/2 subtasks</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority high"></div>
+                            </div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title">Update documentation</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">3:00 PM</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority low"></div>
+                            </div>
+                        </div>
+
+                        <!-- Next Week -->
+                        <div class="date-section">🗓 Next Week</div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title">Schedule dental checkup</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">Dec 18, 9:00 AM</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority low"></div>
+                            </div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-card-content">
+                                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                                <div class="task-main">
+                                    <div class="task-title">Review year-end reports</div>
+                                    <div class="task-meta">
+                                        <div class="task-time">Dec 19, 2:00 PM</div>
+                                    </div>
+                                </div>
+                                <div class="task-priority high"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACTIVITIES VIEW -->
+                    <div class="view-content" id="activities-view">
+                        <!-- Today -->
+                        <div class="date-section">📅 Today - Dec 12</div>
+
+                        <div class="activity-card">
+                            <div class="activity-card-content">
+                                <div class="activity-time-block">
+                                    <div class="activity-time">9:00</div>
+                                    <div class="activity-duration">1h</div>
+                                </div>
+                                <div class="activity-main">
+                                    <div class="activity-title">Team Standup Meeting</div>
+                                    <div class="activity-location">Conference Room A</div>
+                                    <div class="activity-category-bar" style="background: #0ea5e9;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-card-content">
+                                <div class="activity-time-block">
+                                    <div class="activity-time">11:30</div>
+                                    <div class="activity-duration">30m</div>
+                                </div>
+                                <div class="activity-main">
+                                    <div class="activity-title">Coffee with Sarah</div>
+                                    <div class="activity-location">Starbucks Downtown</div>
+                                    <div class="activity-category-bar" style="background: #22c55e;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-card-content">
+                                <div class="activity-time-block">
+                                    <div class="activity-time">14:00</div>
+                                    <div class="activity-duration">2h</div>
+                                </div>
+                                <div class="activity-main">
+                                    <div class="activity-title">Design Review Session</div>
+                                    <div class="activity-location">Zoom Meeting</div>
+                                    <div class="activity-category-bar" style="background: #ef4444;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-card-content">
+                                <div class="activity-time-block">
+                                    <div class="activity-time">17:30</div>
+                                    <div class="activity-duration">1h</div>
+                                </div>
+                                <div class="activity-main">
+                                    <div class="activity-title">Gym Session</div>
+                                    <div class="activity-location">FitLife Gym</div>
+                                    <div class="activity-category-bar" style="background: #fbbf24;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tomorrow -->
+                        <div class="date-section">📆 Tomorrow - Dec 13</div>
+
+                        <div class="activity-card">
+                            <div class="activity-card-content">
+                                <div class="activity-time-block">
+                                    <div class="activity-time">10:00</div>
+                                    <div class="activity-duration">1h 30m</div>
+                                </div>
+                                <div class="activity-main">
+                                    <div class="activity-title">Client Presentation</div>
+                                    <div class="activity-location">Client Office, 5th Floor</div>
+                                    <div class="activity-category-bar" style="background: #ef4444;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-card-content">
+                                <div class="activity-time-block">
+                                    <div class="activity-time">13:00</div>
+                                    <div class="activity-duration">1h</div>
+                                </div>
+                                <div class="activity-main">
+                                    <div class="activity-title">Lunch with Marketing Team</div>
+                                    <div class="activity-location">The Bistro</div>
+                                    <div class="activity-category-bar" style="background: #22c55e;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-card-content">
+                                <div class="activity-time-block">
+                                    <div class="activity-time">15:00</div>
+                                    <div class="activity-duration">45m</div>
+                                </div>
+                                <div class="activity-main">
+                                    <div class="activity-title">1-on-1 with Manager</div>
+                                    <div class="activity-location">Office 304</div>
+                                    <div class="activity-category-bar" style="background: #0ea5e9;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Saturday -->
+                        <div class="date-section">🎯 Saturday - Dec 14</div>
+
+                        <div class="activity-card">
+                            <div class="activity-card-content">
+                                <div class="activity-time-block">
+                                    <div class="activity-time">10:00</div>
+                                    <div class="activity-duration">2h</div>
+                                </div>
+                                <div class="activity-main">
+                                    <div class="activity-title">Yoga Class</div>
+                                    <div class="activity-location">Zen Studio</div>
+                                    <div class="activity-category-bar" style="background: #fbbf24;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-card-content">
+                                <div class="activity-time-block">
+                                    <div class="activity-time">14:00</div>
+                                    <div class="activity-duration">3h</div>
+                                </div>
+                                <div class="activity-main">
+                                    <div class="activity-title">Weekend Hiking Trip</div>
+                                    <div class="activity-location">Mountain Trail Park</div>
+                                    <div class="activity-category-bar" style="background: #22c55e;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAB -->
+                <div class="fab">+</div>
+
+                <!-- Bottom Tab Bar -->
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <div class="nav-icon">📊</div>
+                        <div class="nav-label">Dashboard</div>
+                    </div>
+                    <div class="nav-item active">
+                        <div class="nav-icon">✓</div>
+                        <div class="nav-label">Tasks</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">📅</div>
+                        <div class="nav-label">Calendar</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">💰</div>
+                        <div class="nav-label">Finance</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">👤</div>
+                        <div class="nav-label">Profile</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle task completion
+        function toggleTask(checkbox) {
+            event.stopPropagation();
+            checkbox.classList.toggle('checked');
+            const title = checkbox.parentElement.querySelector('.task-title');
+            title.classList.toggle('completed');
+        }
+
+        // Switch between Tasks and Activities views
+        function switchView(viewName) {
+            // Update tabs
+            document.querySelectorAll('.sub-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update views
+            document.querySelectorAll('.view-content').forEach(view => {
+                view.classList.remove('active');
+            });
+            document.getElementById(viewName + '-view').classList.add('active');
+        }
+
+        // Set filter
+        function setFilter(chip) {
+            document.querySelectorAll('.filter-chip').forEach(c => {
+                c.classList.remove('active');
+            });
+            chip.classList.add('active');
+        }
+
+        // Add hover effects to cards
+        document.querySelectorAll('.task-card, .activity-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('task-checkbox')) {
+                    console.log('Card clicked:', this);
+                }
+            });
+        });
+
+        // FAB click
+        document.querySelector('.fab').addEventListener('click', function() {
+            const activeView = document.querySelector('.sub-tab.active').textContent.trim().toLowerCase();
+            alert('Add new ' + activeView.slice(0, -1));
+        });
+
+        // Bottom nav
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const label = this.querySelector('.nav-label').textContent;
+                if (!this.classList.contains('active')) {
+                    console.log('Navigate to:', label);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

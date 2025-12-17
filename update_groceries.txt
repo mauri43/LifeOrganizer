@@ -1,0 +1,203 @@
+Instructions for updating the Groceries screen in App.js to match Editorial Home Journal aesthetic:
+
+1. Replace the groceries rendering section (lines 5878-5970) with the editorial version
+2. Add new styles to the styles object at the end of the file
+3. Update the grocery total section styling
+
+SECTION 1 - GROCERIES RENDERING (Replace lines 5878-5970):
+================================================================================
+    // Groceries tab with drag-and-drop - Editorial Home Journal Style
+    if (activeTab === 'groceries') {
+      // filteredItems already contains only groceries when activeTab === 'groceries'
+      const groceryItems = [...filteredItems].sort((a, b) => (a.order || 0) - (b.order || 0));
+      const completedGroceries = groceryItems.filter(item => item.completed);
+      const activeGroceries = groceryItems.filter(item => !item.completed);
+      const orderedGroceries = [...activeGroceries, ...completedGroceries];
+
+      return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={[styles.container, { backgroundColor: '#fdfaf5' }]}>
+            <View style={[dynamicStyles.content, { backgroundColor: '#fdfaf5' }]}>
+              {orderedGroceries.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <ShoppingCart size={48} color="#d4c5b0" />
+                  <Text style={[dynamicStyles.emptyStateText, { color: '#1f2933' }]}>No items yet</Text>
+                  <Text style={[dynamicStyles.emptyStateSubtext, { color: '#6b7280' }]}>Tap the + button to add your first item</Text>
+                </View>
+              ) : (
+                <DraggableFlatList
+                  data={orderedGroceries}
+                  onDragEnd={({ data }) => handleReorderCategory('groceries', data)}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item, drag, isActive }) => {
+                    const renderRightActions = () => (
+                      <View style={styles.swipeActionContainer}>
+                        <View style={styles.swipeDeleteButton}>
+                          <Trash2 size={24} color="#fff" />
+                          <Text style={styles.swipeDeleteText}>Delete</Text>
+                        </View>
+                      </View>
+                    );
+
+                    const GroceryContent = (
+                      <TouchableOpacity
+                        onPress={() => openEditForm(item, 'item')}
+                        onLongPress={drag}
+                        disabled={isActive}
+                        style={{ opacity: isActive ? 0.5 : 1 }}
+                      >
+                        <View style={styles.editorialGroceryCard}>
+                          <View style={styles.groceryItemContent}>
+                            <TouchableOpacity
+                              onPress={(e) => { e.stopPropagation(); toggleComplete(item.id); }}
+                              style={[
+                                styles.editorialCheckbox,
+                                item.completed && styles.editorialCheckboxChecked
+                              ]}
+                            >
+                              {item.completed && <Check size={12} color="#fff" />}
+                            </TouchableOpacity>
+                            <View style={styles.groceryTextContainer}>
+                              <Text style={[
+                                styles.editorialGroceryName,
+                                item.completed && styles.editorialGroceryNameCompleted
+                              ]}>
+                                {item.title}
+                              </Text>
+                              {item.notes && (
+                                <Text style={styles.editorialGroceryNotes}>{item.notes}</Text>
+                              )}
+                            </View>
+                            {shouldShowPriceForItem(item) && typeof item.price === 'number' && (
+                              <Text style={[
+                                styles.editorialGroceryPrice,
+                                item.completed && styles.editorialGroceryPriceCompleted
+                              ]}>
+                                ${item.price.toFixed(2)}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+
+                    return (
+                      <Swipeable
+                        key={item.id}
+                        renderRightActions={renderRightActions}
+                        onSwipeableRightOpen={() => deleteItem(item.id)}
+                        rightThreshold={80}
+                        overshootRight={false}
+                        enabled={!isActive}
+                      >
+                        {GroceryContent}
+                      </Swipeable>
+                    );
+                  }}
+                  contentContainerStyle={{ paddingBottom: 16 }}
+                />
+              )}
+            </View>
+          </View>
+        </GestureHandlerRootView>
+      );
+    }
+================================================================================
+
+SECTION 2 - NEW STYLES (Add before the closing bracket of StyleSheet.create):
+================================================================================
+  editorialGroceryCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 8,
+    shadowColor: '#0f1729',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  groceryItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    paddingHorizontal: 16,
+  },
+  editorialCheckbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
+    borderColor: '#d4c5b0',
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  editorialCheckboxChecked: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  groceryTextContainer: {
+    flex: 1,
+  },
+  editorialGroceryName: {
+    fontSize: 15,
+    color: '#1f2933',
+  },
+  editorialGroceryNameCompleted: {
+    textDecorationLine: 'line-through',
+    opacity: 0.5,
+  },
+  editorialGroceryNotes: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  editorialGroceryPrice: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  editorialGroceryPriceCompleted: {
+    opacity: 0.5,
+  },
+================================================================================
+
+SECTION 3 - UPDATE GROCERY TOTAL (Replace groceryTotal styles around line 10164):
+================================================================================
+  groceryTotal: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingRight: 90,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    shadowColor: '#0f1729',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  groceryTotalLabel: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1f2933',
+    fontFamily: 'System',
+  },
+  groceryTotalAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#b45309',
+  },
+================================================================================

@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Recipes & Restaurants Screens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #f5f5f4;
+            --bg-card: #ffffff;
+            --bg-card-alt: #e5e7eb;
+            --accent-primary: #ef4444;
+            --accent-secondary: #0ea5e9;
+            --accent-tertiary: #22c55e;
+            --accent-amber: #fbbf24;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --border-strong: #111827;
+            --border-width: 2px;
+            --tab-bar-bg: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: #e5e5e5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .page-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                );
+            pointer-events: none;
+        }
+
+        .screens-container {
+            display: flex;
+            gap: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .device-frame {
+            width: 390px;
+            height: 844px;
+            background: var(--bg-app);
+            border: 4px solid var(--border-strong);
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 8px 8px 0 var(--border-strong);
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 30px;
+            background: var(--border-strong);
+            border-radius: 0 0 16px 16px;
+            z-index: 100;
+        }
+
+        .app-container {
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 90px;
+            scrollbar-width: none;
+        }
+
+        .app-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Header */
+        .app-header {
+            padding: 48px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-app);
+            border-bottom: var(--border-width) solid var(--border-strong);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-secondary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .settings-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .settings-btn:hover {
+            background: var(--text-primary);
+        }
+
+        .settings-btn:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .settings-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Page Title */
+        .page-title {
+            padding: 12px 16px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .page-title h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 0 16px;
+        }
+
+        /* Search Bar */
+        .search-bar {
+            margin: 16px 0 12px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 120ms ease-out;
+        }
+
+        .search-input:focus {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+            pointer-events: none;
+        }
+
+        /* Section Header */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 20px 0 10px;
+            padding-left: 4px;
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            padding-left: 8px;
+        }
+
+        /* Filter Chips */
+        .filter-chips {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+            margin-bottom: 16px;
+        }
+
+        .filter-chips::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-chip {
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .filter-chip:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .filter-chip.active {
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            display: flex;
+            margin: 16px 0;
+        }
+
+        .view-toggle-btn {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .view-toggle-btn:first-child {
+            border-right: none;
+        }
+
+        .view-toggle-btn.active {
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .view-toggle-btn:not(.active):hover {
+            background: var(--bg-card-alt);
+        }
+
+        /* Recipe Card */
+        .recipe-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 12px;
+            transition: all 120ms ease-out;
+            cursor: pointer;
+        }
+
+        .recipe-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .recipe-card:active {
+            box-shadow: none;
+            transform: translate(0, 0);
+        }
+
+        .recipe-thumbnail {
+            width: 100%;
+            height: 180px;
+            background: var(--bg-card-alt);
+            border-bottom: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .recipe-thumbnail svg {
+            width: 56px;
+            height: 56px;
+            stroke: var(--text-muted);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .recipe-source-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 4px 8px;
+            background: var(--text-primary);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--bg-card);
+        }
+
+        .recipe-info {
+            padding: 12px;
+        }
+
+        .recipe-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .recipe-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .recipe-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .add-groceries-btn {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--accent-tertiary);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: white;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .add-groceries-btn:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .add-groceries-btn:active {
+            box-shadow: none;
+            transform: translate(0, 0);
+        }
+
+        /* Restaurant Card */
+        .restaurant-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 10px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .restaurant-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .restaurant-card:active {
+            box-shadow: none;
+            transform: translate(0, 0);
+        }
+
+        .restaurant-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .restaurant-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .restaurant-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .restaurant-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .restaurant-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .restaurant-notes {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .restaurant-distance {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        /* FAB */
+        .fab-container {
+            position: absolute;
+            bottom: 100px;
+            right: 16px;
+            z-index: 60;
+        }
+
+        .fab {
+            width: 52px;
+            height: 52px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .fab:hover {
+            box-shadow: 4px 4px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .fab:active {
+            box-shadow: none;
+            transform: translate(0, 0);
+        }
+
+        .fab svg {
+            width: 26px;
+            height: 26px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: var(--tab-bar-bg);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding: 8px 4px 0;
+            z-index: 80;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .tab-item.active {
+            background: var(--accent-amber);
+        }
+
+        .tab-item svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--bg-card-alt);
+            stroke-width: 2;
+            fill: none;
+            transition: all 120ms;
+        }
+
+        .tab-item.active svg {
+            stroke: var(--text-primary);
+        }
+
+        .tab-item span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--bg-card-alt);
+            transition: all 120ms;
+        }
+
+        .tab-item.active span {
+            color: var(--text-primary);
+        }
+
+        /* Screen Label */
+        .screen-label {
+            text-align: center;
+            margin-top: 16px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <div class="screens-container">
+        <!-- RECIPES SCREEN -->
+        <div>
+            <div class="device-frame">
+                <div class="device-notch"></div>
+
+                <div class="app-container">
+                    <!-- Header -->
+                    <header class="app-header">
+                        <div class="logo">
+                            <div class="logo-icon">
+                                <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            </div>
+                            <span class="logo-text">Life Org</span>
+                        </div>
+                        <div class="header-right">
+                            <div class="avatar">A</div>
+                            <button class="settings-btn">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            </button>
+                        </div>
+                    </header>
+
+                    <!-- Page Title -->
+                    <div class="page-title">
+                        <h1>Recipes</h1>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="main-content">
+                        <!-- Search Bar -->
+                        <div class="search-bar">
+                            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" class="search-input" placeholder="Search recipes...">
+                        </div>
+
+                        <!-- Recipe Cards -->
+                        <div class="recipe-card">
+                            <div class="recipe-thumbnail">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                                    <path d="M7 2v20"/>
+                                    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                                </svg>
+                                <div class="recipe-source-badge">TIKTOK</div>
+                            </div>
+                            <div class="recipe-info">
+                                <div class="recipe-title">Creamy Tuscan Pasta</div>
+                                <div class="recipe-meta">30 min • Easy • 4 servings</div>
+                                <div class="recipe-actions">
+                                    <button class="add-groceries-btn">+ Groceries</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="recipe-card">
+                            <div class="recipe-thumbnail">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                                    <path d="M7 2v20"/>
+                                    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                                </svg>
+                                <div class="recipe-source-badge">INSTAGRAM</div>
+                            </div>
+                            <div class="recipe-info">
+                                <div class="recipe-title">One-Pan Chicken Fajitas</div>
+                                <div class="recipe-meta">25 min • Easy • 3 servings</div>
+                                <div class="recipe-actions">
+                                    <button class="add-groceries-btn">+ Groceries</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="recipe-card">
+                            <div class="recipe-thumbnail">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                                    <path d="M7 2v20"/>
+                                    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                                </svg>
+                                <div class="recipe-source-badge">YOUTUBE</div>
+                            </div>
+                            <div class="recipe-info">
+                                <div class="recipe-title">Spicy Thai Basil Stir-Fry</div>
+                                <div class="recipe-meta">20 min • Medium • 2 servings</div>
+                                <div class="recipe-actions">
+                                    <button class="add-groceries-btn">+ Groceries</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="recipe-card">
+                            <div class="recipe-thumbnail">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                                    <path d="M7 2v20"/>
+                                    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                                </svg>
+                                <div class="recipe-source-badge">TIKTOK</div>
+                            </div>
+                            <div class="recipe-info">
+                                <div class="recipe-title">Sheet Pan Honey Garlic Salmon</div>
+                                <div class="recipe-meta">35 min • Medium • 4 servings</div>
+                                <div class="recipe-actions">
+                                    <button class="add-groceries-btn">+ Groceries</button>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+
+                <!-- FAB -->
+                <div class="fab-container">
+                    <button class="fab">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Tab Bar -->
+                <nav class="tab-bar">
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Today</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        <span>Ideas</span>
+                    </div>
+                    <div class="tab-item active">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                            <path d="M7 2v20"/>
+                            <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                        </svg>
+                        <span>Food</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                        <span>Shop</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span>Cal</span>
+                    </div>
+                </nav>
+            </div>
+            <div class="screen-label">Recipes Screen</div>
+        </div>
+
+        <!-- RESTAURANTS SCREEN -->
+        <div>
+            <div class="device-frame">
+                <div class="device-notch"></div>
+
+                <div class="app-container">
+                    <!-- Header -->
+                    <header class="app-header">
+                        <div class="logo">
+                            <div class="logo-icon">
+                                <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            </div>
+                            <span class="logo-text">Life Org</span>
+                        </div>
+                        <div class="header-right">
+                            <div class="avatar">A</div>
+                            <button class="settings-btn">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            </button>
+                        </div>
+                    </header>
+
+                    <!-- Page Title -->
+                    <div class="page-title">
+                        <h1>Restaurants</h1>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="main-content">
+                        <!-- View Toggle -->
+                        <div class="view-toggle">
+                            <button class="view-toggle-btn active">List</button>
+                            <button class="view-toggle-btn">Map</button>
+                        </div>
+
+                        <!-- Cuisine Filter Chips -->
+                        <div class="filter-chips">
+                            <button class="filter-chip active">All</button>
+                            <button class="filter-chip">Italian</button>
+                            <button class="filter-chip">Japanese</button>
+                            <button class="filter-chip">Mexican</button>
+                            <button class="filter-chip">Thai</button>
+                            <button class="filter-chip">American</button>
+                        </div>
+
+                        <!-- Restaurant Cards -->
+                        <div class="restaurant-card">
+                            <div class="restaurant-icon">
+                                <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                            </div>
+                            <div class="restaurant-info">
+                                <div class="restaurant-name">Cafe Luna</div>
+                                <div class="restaurant-meta">Italian • $$</div>
+                                <div class="restaurant-notes">Great for lunch dates</div>
+                            </div>
+                            <span class="restaurant-distance">0.8mi</span>
+                        </div>
+
+                        <div class="restaurant-card">
+                            <div class="restaurant-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                                    <path d="M7 2v20"/>
+                                    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                                </svg>
+                            </div>
+                            <div class="restaurant-info">
+                                <div class="restaurant-name">Sakura Sushi</div>
+                                <div class="restaurant-meta">Japanese • $$$</div>
+                                <div class="restaurant-notes">Best omakase in town</div>
+                            </div>
+                            <span class="restaurant-distance">1.2mi</span>
+                        </div>
+
+                        <div class="restaurant-card">
+                            <div class="restaurant-icon">
+                                <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                            </div>
+                            <div class="restaurant-info">
+                                <div class="restaurant-name">Blue Bottle Coffee</div>
+                                <div class="restaurant-meta">Cafe • $</div>
+                                <div class="restaurant-notes">Perfect for morning meetings</div>
+                            </div>
+                            <span class="restaurant-distance">0.3mi</span>
+                        </div>
+
+                        <div class="restaurant-card">
+                            <div class="restaurant-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                                    <path d="M7 2v20"/>
+                                    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                                </svg>
+                            </div>
+                            <div class="restaurant-info">
+                                <div class="restaurant-name">Tacos El Gordo</div>
+                                <div class="restaurant-meta">Mexican • $</div>
+                                <div class="restaurant-notes">Cash only, amazing carne asada</div>
+                            </div>
+                            <span class="restaurant-distance">2.1mi</span>
+                        </div>
+
+                        <div class="restaurant-card">
+                            <div class="restaurant-icon">
+                                <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                            </div>
+                            <div class="restaurant-info">
+                                <div class="restaurant-name">Thai Basil Kitchen</div>
+                                <div class="restaurant-meta">Thai • $$</div>
+                                <div class="restaurant-notes">Spicy level: No joke</div>
+                            </div>
+                            <span class="restaurant-distance">1.5mi</span>
+                        </div>
+
+                        <div class="restaurant-card">
+                            <div class="restaurant-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                                    <path d="M7 2v20"/>
+                                    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                                </svg>
+                            </div>
+                            <div class="restaurant-info">
+                                <div class="restaurant-name">The Brickhouse</div>
+                                <div class="restaurant-meta">American • $$</div>
+                                <div class="restaurant-notes">Happy hour Mon-Fri 4-7pm</div>
+                            </div>
+                            <span class="restaurant-distance">0.9mi</span>
+                        </div>
+
+                        <div class="restaurant-card">
+                            <div class="restaurant-icon">
+                                <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                            </div>
+                            <div class="restaurant-info">
+                                <div class="restaurant-name">Pho Saigon</div>
+                                <div class="restaurant-meta">Vietnamese • $</div>
+                                <div class="restaurant-notes">Try the #7 combination</div>
+                            </div>
+                            <span class="restaurant-distance">1.8mi</span>
+                        </div>
+                    </main>
+                </div>
+
+                <!-- FAB -->
+                <div class="fab-container">
+                    <button class="fab">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Tab Bar -->
+                <nav class="tab-bar">
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Today</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        <span>Ideas</span>
+                    </div>
+                    <div class="tab-item active">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                            <path d="M7 2v20"/>
+                            <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                        </svg>
+                        <span>Food</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                        <span>Shop</span>
+                    </div>
+                    <div class="tab-item">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span>Cal</span>
+                    </div>
+                </nav>
+            </div>
+            <div class="screen-label">Restaurants Screen</div>
+        </div>
+    </div>
+</body>
+</html>

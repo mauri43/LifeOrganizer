@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Life Organizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 430px;
+            height: 932px;
+            background: #000;
+            border-radius: 60px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-notch {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 30px;
+            background: #000;
+            border-radius: 0 0 20px 20px;
+            z-index: 1000;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: #f5f5f4;
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            background: #111827;
+            color: #fff;
+            padding: 60px 20px 20px 20px;
+            border-bottom: 2px solid #111827;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-button {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Content */
+        .content {
+            height: calc(100% - 100px);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: #f5f5f4;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: #111827;
+            border-radius: 3px;
+        }
+
+        /* Section */
+        .section {
+            background: #fff;
+            border: 2px solid #111827;
+            border-left: 4px solid #ef4444;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #f5f5f4;
+            padding: 12px 16px;
+            border-bottom: 2px solid #111827;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #111827;
+        }
+
+        .section-content {
+            padding: 16px;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            display: flex;
+            gap: 8px;
+        }
+
+        .theme-button {
+            flex: 1;
+            padding: 12px;
+            background: #fff;
+            border: 2px solid #111827;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .theme-button.active {
+            background: #111827;
+            color: #fff;
+        }
+
+        .theme-button:hover:not(.active) {
+            transform: translate(-2px, -2px);
+            box-shadow: 3px 3px 0 #111827;
+        }
+
+        /* Tab List */
+        .tab-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tab-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #f5f5f4;
+            border: 2px solid #111827;
+            cursor: move;
+            transition: all 0.2s;
+        }
+
+        .tab-item:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 3px 3px 0 #111827;
+        }
+
+        .drag-handle {
+            font-size: 18px;
+            color: #6b7280;
+            cursor: grab;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .tab-name {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .tab-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-button {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .icon-button:hover {
+            background: #e5e5e5;
+        }
+
+        .icon-button.active {
+            color: #fbbf24;
+        }
+
+        /* Household */
+        .household-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        .info-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+        }
+
+        .info-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 500;
+            color: #111827;
+        }
+
+        .member-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 8px 0;
+        }
+
+        .member-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            background: #f5f5f4;
+            border: 2px solid #111827;
+        }
+
+        .member-avatar {
+            width: 32px;
+            height: 32px;
+            background: #0ea5e9;
+            border: 2px solid #111827;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .member-avatar:nth-child(2) {
+            background: #22c55e;
+        }
+
+        .member-name {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .member-role {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #6b7280;
+            padding: 4px 8px;
+            background: #fff;
+            border: 1px solid #111827;
+        }
+
+        /* Buttons */
+        .button {
+            width: 100%;
+            padding: 12px;
+            background: #fff;
+            border: 2px solid #111827;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .button:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 3px 3px 0 #111827;
+        }
+
+        .button.primary {
+            background: #0ea5e9;
+            color: #fff;
+        }
+
+        .button.danger {
+            background: #fff;
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .button.danger:hover {
+            background: #ef4444;
+            color: #fff;
+            box-shadow: 3px 3px 0 #ef4444;
+        }
+
+        /* Radio Group */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .radio-input {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #111827;
+            background: #fff;
+            border-radius: 50%;
+            position: relative;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-top: 2px;
+        }
+
+        .radio-option input[type="radio"] {
+            display: none;
+        }
+
+        .radio-option input[type="radio"]:checked + .radio-input::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: #111827;
+            border-radius: 50%;
+        }
+
+        .radio-label {
+            flex: 1;
+        }
+
+        .radio-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .radio-description {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+
+        /* Profile */
+        .profile-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            background: #ef4444;
+            border: 2px solid #111827;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 24px;
+            color: #fff;
+        }
+
+        .profile-details {
+            flex: 1;
+        }
+
+        .profile-name {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .profile-email {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        /* About */
+        .about-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .about-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .link {
+            color: #0ea5e9;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .link:hover {
+            border-bottom-color: #0ea5e9;
+        }
+
+        /* Divider */
+        .divider {
+            height: 2px;
+            background: #e5e5e5;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="iphone-frame">
+        <div class="iphone-notch"></div>
+        <div class="iphone-screen">
+            <!-- Header -->
+            <div class="header">
+                <button class="back-button">←</button>
+                <h1 class="header-title">Settings</h1>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+                <!-- Appearance Section -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Appearance</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="theme-toggle">
+                            <button class="theme-button active">Light</button>
+                            <button class="theme-button">Dark</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manage Tabs Section -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Manage Tabs</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="tab-list">
+                            <div class="tab-item">
+                                <span class="drag-handle">⋮⋮</span>
+                                <span class="tab-name">Today</span>
+                                <div class="tab-controls">
+                                    <button class="icon-button active" title="Default tab">★</button>
+                                    <button class="icon-button" title="Visible">👁</button>
+                                </div>
+                            </div>
+                            <div class="tab-item">
+                                <span class="drag-handle">⋮⋮</span>
+                                <span class="tab-name">Ideas</span>
+                                <div class="tab-controls">
+                                    <button class="icon-button" title="Set as default">☆</button>
+                                    <button class="icon-button" title="Visible">👁</button>
+                                </div>
+                            </div>
+                            <div class="tab-item">
+                                <span class="drag-handle">⋮⋮</span>
+                                <span class="tab-name">Food</span>
+                                <div class="tab-controls">
+                                    <button class="icon-button" title="Set as default">☆</button>
+                                    <button class="icon-button" title="Visible">👁</button>
+                                </div>
+                            </div>
+                            <div class="tab-item">
+                                <span class="drag-handle">⋮⋮</span>
+                                <span class="tab-name">Tasks</span>
+                                <div class="tab-controls">
+                                    <button class="icon-button" title="Set as default">☆</button>
+                                    <button class="icon-button" title="Visible">👁</button>
+                                </div>
+                            </div>
+                            <div class="tab-item">
+                                <span class="drag-handle">⋮⋮</span>
+                                <span class="tab-name">Shop</span>
+                                <div class="tab-controls">
+                                    <button class="icon-button" title="Set as default">☆</button>
+                                    <button class="icon-button" title="Visible">👁</button>
+                                </div>
+                            </div>
+                            <div class="tab-item">
+                                <span class="drag-handle">⋮⋮</span>
+                                <span class="tab-name">Calendar</span>
+                                <div class="tab-controls">
+                                    <button class="icon-button" title="Set as default">☆</button>
+                                    <button class="icon-button" title="Visible">👁</button>
+                                </div>
+                            </div>
+                            <div class="tab-item">
+                                <span class="drag-handle">⋮⋮</span>
+                                <span class="tab-name">Gifts</span>
+                                <div class="tab-controls">
+                                    <button class="icon-button" title="Set as default">☆</button>
+                                    <button class="icon-button" title="Visible">👁</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Household Section -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Household</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="household-info">
+                            <div class="info-row">
+                                <span class="info-label">Household Name</span>
+                                <span class="info-value">Smith Family</span>
+                            </div>
+
+                            <div class="divider"></div>
+
+                            <div class="info-label">Members</div>
+                            <div class="member-list">
+                                <div class="member-item">
+                                    <div class="member-avatar">M</div>
+                                    <span class="member-name">Mike Smith</span>
+                                    <span class="member-role">Admin</span>
+                                </div>
+                                <div class="member-item">
+                                    <div class="member-avatar">S</div>
+                                    <span class="member-name">Sarah Smith</span>
+                                    <span class="member-role">Member</span>
+                                </div>
+                            </div>
+
+                            <button class="button primary">Share Invite Code</button>
+                            <button class="button danger">Leave Household</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Household Permissions Section -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Household Permissions</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="permissions" checked>
+                                <div class="radio-input"></div>
+                                <div class="radio-label">
+                                    <div class="radio-title">Collaborative</div>
+                                    <div class="radio-description">All household members can edit any item</div>
+                                </div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="permissions">
+                                <div class="radio-input"></div>
+                                <div class="radio-label">
+                                    <div class="radio-title">Strict</div>
+                                    <div class="radio-description">Members can only edit their own items</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Section -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Account</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="profile-info">
+                            <div class="profile-avatar">M</div>
+                            <div class="profile-details">
+                                <div class="profile-name">Mike Smith</div>
+                                <div class="profile-email">mike.smith@email.com</div>
+                            </div>
+                        </div>
+                        <button class="button">Sign Out</button>
+                    </div>
+                </div>
+
+                <!-- About Section -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">About</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="about-info">
+                            <div class="about-row">
+                                <span class="info-label">Version</span>
+                                <span class="info-value">1.0.0</span>
+                            </div>
+                            <div class="divider"></div>
+                            <div class="about-row">
+                                <span class="info-label">Feedback</span>
+                                <a href="#" class="link">Send Feedback</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Soft Pastel Calm</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #050816;
+            --bg-card: #0f172a;
+            --bg-card-hover: #1e293b;
+            --accent-primary: #38bdf8;
+            --accent-secondary: #a855f7;
+            --accent-success: #22c55e;
+            --accent-warning: #f97316;
+            --accent-danger: #ef4444;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --surface-muted: #1e293b;
+            --surface-darker: #111827;
+            --tab-bar-bg: #020617;
+            --border-subtle: #1f2937;
+            --border-active: #334155;
+            --shadow-card: rgba(15,23,42,0.75);
+            --shadow-fab: rgba(56,189,248,0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0c0c1d 0%, #1a1a2e 50%, #0f0f23 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .page-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(56,189,248,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(168,85,247,0.08) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .device-frame {
+            width: 430px;
+            height: 932px;
+            background: var(--bg-app);
+            border-radius: 44px;
+            overflow: hidden;
+            position: relative;
+            box-shadow:
+                0 0 0 12px #1a1a2e,
+                0 0 0 14px #2d2d44,
+                0 50px 100px rgba(0,0,0,0.5);
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 34px;
+            background: #000;
+            border-radius: 0 0 24px 24px;
+            z-index: 100;
+        }
+
+        .app-container {
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 100px;
+            scrollbar-width: none;
+        }
+
+        .app-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Header */
+        .app-header {
+            padding: 54px 20px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-app);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .logo-text {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text-primary);
+        }
+
+        .household-selector {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--surface-muted);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 200ms ease-out;
+        }
+
+        .household-selector:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .household-selector span {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .household-selector svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-secondary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .settings-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--surface-muted);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 200ms ease-out;
+        }
+
+        .settings-btn:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .settings-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-secondary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Sub Header */
+        .sub-header {
+            padding: 8px 20px 16px;
+            background: var(--bg-app);
+        }
+
+        .date-text {
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .welcome-text {
+            font-family: 'Poppins', sans-serif;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 0 20px;
+        }
+
+        /* Weather Card */
+        .weather-card {
+            background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+            animation: weatherGlow 10s ease-in-out infinite;
+        }
+
+        @keyframes weatherGlow {
+            0%, 100% { box-shadow: 0 18px 45px rgba(14,165,233,0.3); }
+            50% { box-shadow: 0 18px 45px rgba(99,102,241,0.4); }
+        }
+
+        .weather-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -30%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .weather-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .weather-location {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 8px;
+        }
+
+        .weather-temp {
+            font-family: 'Poppins', sans-serif;
+            font-size: 56px;
+            font-weight: 700;
+            color: white;
+            line-height: 1;
+        }
+
+        .weather-icon {
+            width: 72px;
+            height: 72px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .weather-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: white;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .weather-condition {
+            font-size: 16px;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .weather-highlow {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .weather-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .weather-toggle span {
+            font-size: 13px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 999px;
+            position: relative;
+            cursor: pointer;
+            transition: all 200ms ease-out;
+        }
+
+        .toggle-switch.active {
+            background: rgba(255,255,255,0.5);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 200ms ease-out;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        .weather-forecast {
+            display: none;
+            gap: 8px;
+            margin-top: 16px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .weather-forecast.visible {
+            display: flex;
+        }
+
+        .forecast-day {
+            flex-shrink: 0;
+            text-align: center;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 12px;
+        }
+
+        .forecast-day .day {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 6px;
+        }
+
+        .forecast-day svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+            stroke-width: 1.5;
+            fill: none;
+            margin-bottom: 6px;
+        }
+
+        .forecast-day .temp {
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+        }
+
+        /* Section Styles */
+        .section {
+            margin-bottom: 28px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .section-action {
+            font-size: 13px;
+            color: var(--accent-primary);
+            cursor: pointer;
+            transition: color 200ms;
+        }
+
+        .section-action:hover {
+            color: var(--accent-secondary);
+        }
+
+        /* Activity List */
+        .activity-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 200ms ease-out;
+        }
+
+        .activity-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-active);
+            transform: translateY(-1px);
+        }
+
+        .activity-card:active {
+            transform: scale(0.98);
+        }
+
+        .activity-time {
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-primary);
+            min-width: 60px;
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .activity-location {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .category-pill {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .category-pill.work { background: rgba(56,189,248,0.2); color: var(--accent-primary); }
+        .category-pill.personal { background: rgba(168,85,247,0.2); color: var(--accent-secondary); }
+        .category-pill.health { background: rgba(34,197,94,0.2); color: var(--accent-success); }
+        .category-pill.family { background: rgba(249,115,22,0.2); color: var(--accent-warning); }
+
+        /* Tasks Section */
+        .tasks-summary {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .summary-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--surface-muted);
+            border-radius: 999px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .summary-chip .count {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .summary-chip.overdue .count {
+            color: var(--accent-danger);
+        }
+
+        .task-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 200ms ease-out;
+        }
+
+        .task-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-active);
+        }
+
+        .task-card:active {
+            transform: scale(0.98);
+        }
+
+        .task-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--border-active);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 200ms ease-out;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .task-checkbox:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .task-checkbox.checked {
+            background: var(--accent-success);
+            border-color: var(--accent-success);
+        }
+
+        .task-checkbox svg {
+            width: 14px;
+            height: 14px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+        }
+
+        .task-checkbox.checked svg {
+            opacity: 1;
+        }
+
+        .task-info {
+            flex: 1;
+        }
+
+        .task-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .task-subtasks {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+        }
+
+        .task-subtasks svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .priority-tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .priority-tag.high { background: rgba(239,68,68,0.2); color: var(--accent-danger); }
+        .priority-tag.medium { background: rgba(249,115,22,0.2); color: var(--accent-warning); }
+        .priority-tag.low { background: rgba(34,197,94,0.2); color: var(--accent-success); }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+
+        .quick-action-btn {
+            flex: 1;
+            padding: 12px;
+            background: var(--surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 200ms ease-out;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-primary);
+        }
+
+        .quick-action-btn svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--accent-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .quick-action-btn span {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* Preview Carousel */
+        .preview-carousel {
+            margin-bottom: 28px;
+        }
+
+        .carousel-container {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            scrollbar-width: none;
+        }
+
+        .carousel-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .preview-card {
+            flex-shrink: 0;
+            width: 280px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 16px;
+            transition: all 200ms ease-out;
+        }
+
+        .preview-card:hover {
+            border-color: var(--border-active);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px var(--shadow-card);
+        }
+
+        .preview-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .preview-card-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .preview-toggle {
+            display: flex;
+            gap: 4px;
+            padding: 3px;
+            background: var(--surface-darker);
+            border-radius: 6px;
+        }
+
+        .preview-toggle-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+
+        .preview-toggle-btn.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        /* Ideas Preview */
+        .ideas-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .ideas-column h4 {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .idea-item {
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .idea-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Restaurant Preview */
+        .restaurant-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .restaurant-row:last-child {
+            border-bottom: none;
+        }
+
+        .restaurant-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--surface-muted);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .restaurant-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--accent-warning);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .restaurant-info {
+            flex: 1;
+        }
+
+        .restaurant-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .restaurant-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .restaurant-distance {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Recipe Preview */
+        .recipe-item {
+            display: flex;
+            gap: 12px;
+        }
+
+        .recipe-thumb {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--surface-muted), var(--surface-darker));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .recipe-thumb svg {
+            width: 30px;
+            height: 30px;
+            stroke: var(--text-muted);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .recipe-info {
+            flex: 1;
+        }
+
+        .recipe-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .recipe-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .recipe-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .recipe-source {
+            padding: 3px 8px;
+            background: var(--surface-muted);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .add-groceries-btn {
+            padding: 4px 10px;
+            background: var(--accent-primary);
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: white;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+
+        .add-groceries-btn:hover {
+            background: var(--accent-secondary);
+        }
+
+        /* FAB */
+        .fab-container {
+            position: absolute;
+            bottom: 100px;
+            right: 20px;
+            z-index: 60;
+        }
+
+        .fab {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px var(--shadow-fab);
+            transition: all 200ms ease-out;
+        }
+
+        .fab:hover {
+            transform: scale(1.08);
+            box-shadow: 0 14px 40px var(--shadow-fab);
+        }
+
+        .fab svg {
+            width: 28px;
+            height: 28px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+            transition: transform 200ms ease-out;
+        }
+
+        .fab.open svg {
+            transform: rotate(45deg);
+        }
+
+        .fab-menu {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: all 200ms ease-out;
+        }
+
+        .fab-menu.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+
+        .fab-mini {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 150ms;
+            white-space: nowrap;
+        }
+
+        .fab-mini:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-primary);
+        }
+
+        .fab-mini svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--accent-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .fab-mini span {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 85px;
+            background: var(--tab-bar-bg);
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding: 10px 8px 0;
+            z-index: 80;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 150ms;
+            position: relative;
+        }
+
+        .tab-item:hover {
+            background: var(--surface-muted);
+        }
+
+        .tab-item.active {
+            background: rgba(56,189,248,0.15);
+        }
+
+        .tab-item.active::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 3px;
+            background: var(--accent-primary);
+            border-radius: 0 0 3px 3px;
+        }
+
+        .tab-item svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+            transition: all 150ms;
+        }
+
+        .tab-item.active svg {
+            stroke: var(--accent-primary);
+        }
+
+        .tab-item span {
+            font-size: 10px;
+            color: var(--text-muted);
+            transition: all 150ms;
+        }
+
+        .tab-item.active span {
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-app);
+            z-index: 200;
+            transition: right 300ms ease-out;
+            overflow-y: auto;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            padding: 54px 20px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            background: var(--surface-muted);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .back-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .settings-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .settings-content {
+            padding: 20px;
+        }
+
+        .settings-section {
+            margin-bottom: 28px;
+        }
+
+        .settings-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .settings-row-label {
+            font-size: 15px;
+            color: var(--text-primary);
+        }
+
+        .theme-toggle {
+            display: flex;
+            gap: 8px;
+        }
+
+        .theme-option {
+            padding: 8px 16px;
+            background: var(--surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 150ms;
+        }
+
+        .theme-option.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .tab-manage-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .drag-handle {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+            cursor: grab;
+        }
+
+        .tab-manage-name {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .visibility-toggle, .default-toggle {
+            width: 32px;
+            height: 32px;
+            background: var(--surface-muted);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .visibility-toggle svg, .default-toggle svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .visibility-toggle.active svg {
+            stroke: var(--accent-primary);
+        }
+
+        .default-toggle.active svg {
+            stroke: var(--accent-warning);
+            fill: var(--accent-warning);
+        }
+
+        .permission-option {
+            padding: 14px;
+            background: var(--surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+
+        .permission-option:hover {
+            border-color: var(--border-active);
+        }
+
+        .permission-option.active {
+            border-color: var(--accent-primary);
+            background: rgba(56,189,248,0.1);
+        }
+
+        .permission-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .permission-radio {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-active);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .permission-option.active .permission-radio {
+            border-color: var(--accent-primary);
+        }
+
+        .permission-option.active .permission-radio::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+        }
+
+        .permission-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .permission-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding-left: 28px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <div class="device-frame">
+        <div class="device-notch"></div>
+
+        <div class="app-container">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Organizer</span>
+                </div>
+                <div class="household-selector" onclick="toggleSettings()">
+                    <span>My Home</span>
+                    <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">A</div>
+                    <button class="settings-btn" onclick="toggleSettings()">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Sub Header -->
+            <div class="sub-header">
+                <div class="date-text">Thursday, Dec 11</div>
+                <div class="welcome-text">Good evening, Alex</div>
+            </div>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Weather Card -->
+                <div class="weather-card">
+                    <div class="weather-top">
+                        <div>
+                            <div class="weather-location">San Francisco, CA</div>
+                            <div class="weather-temp">68°</div>
+                        </div>
+                        <div class="weather-icon">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        </div>
+                    </div>
+                    <div class="weather-condition">Partly Cloudy</div>
+                    <div class="weather-highlow">H: 72° L: 58°</div>
+
+                    <div class="weather-toggle">
+                        <span>Weekly Forecast</span>
+                        <div class="toggle-switch" onclick="toggleForecast(this)"></div>
+                    </div>
+
+                    <div class="weather-forecast" id="forecast">
+                        <div class="forecast-day">
+                            <div class="day">Fri</div>
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/></svg>
+                            <div class="temp">70°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Sat</div>
+                            <svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                            <div class="temp">65°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Sun</div>
+                            <svg viewBox="0 0 24 24"><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><line x1="12" y1="15" x2="12" y2="23"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>
+                            <div class="temp">62°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Mon</div>
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/></svg>
+                            <div class="temp">71°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Tue</div>
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/></svg>
+                            <div class="temp">73°</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Schedule -->
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Today's Schedule</h2>
+                        <span class="section-action">See All</span>
+                    </div>
+
+                    <div class="activity-card">
+                        <span class="activity-time">9:00 AM</span>
+                        <div class="activity-info">
+                            <div class="activity-title">Team Standup</div>
+                            <div class="activity-location">Zoom Meeting</div>
+                        </div>
+                        <span class="category-pill work">Work</span>
+                    </div>
+
+                    <div class="activity-card">
+                        <span class="activity-time">12:30 PM</span>
+                        <div class="activity-info">
+                            <div class="activity-title">Lunch with Sarah</div>
+                            <div class="activity-location">Cafe Luna</div>
+                        </div>
+                        <span class="category-pill personal">Personal</span>
+                    </div>
+
+                    <div class="activity-card">
+                        <span class="activity-time">3:00 PM</span>
+                        <div class="activity-info">
+                            <div class="activity-title">Gym Session</div>
+                            <div class="activity-location">FitLife Gym</div>
+                        </div>
+                        <span class="category-pill health">Health</span>
+                    </div>
+
+                    <div class="activity-card">
+                        <span class="activity-time">6:30 PM</span>
+                        <div class="activity-info">
+                            <div class="activity-title">Family Dinner</div>
+                            <div class="activity-location">Home</div>
+                        </div>
+                        <span class="category-pill family">Family</span>
+                    </div>
+                </section>
+
+                <!-- Tasks Section -->
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Tasks Due Today</h2>
+                        <span class="section-action">View All</span>
+                    </div>
+
+                    <div class="tasks-summary">
+                        <div class="summary-chip">
+                            <span class="count">5</span> Tasks
+                        </div>
+                        <div class="summary-chip">
+                            <span class="count">4</span> Activities
+                        </div>
+                        <div class="summary-chip overdue">
+                            <span class="count">1</span> Overdue
+                        </div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox" onclick="toggleCheck(this)">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Review Q4 budget proposal</div>
+                            <div class="task-meta">
+                                <span>Due 5:00 PM</span>
+                                <span class="priority-tag high">High</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox" onclick="toggleCheck(this)">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Prepare grocery list for weekend</div>
+                            <div class="task-meta">
+                                <span>Due 8:00 PM</span>
+                                <div class="task-subtasks">
+                                    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                    3 subtasks
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox checked" onclick="toggleCheck(this)">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title" style="text-decoration: line-through; opacity: 0.6;">Call dentist for appointment</div>
+                            <div class="task-meta">
+                                <span style="opacity: 0.6;">Completed</span>
+                                <span class="priority-tag low">Low</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox" onclick="toggleCheck(this)">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Order birthday gift for Mom</div>
+                            <div class="task-meta">
+                                <span>Due 11:59 PM</span>
+                                <span class="priority-tag medium">Med</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="quick-action-btn">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+                        <span>Add Task</span>
+                    </button>
+                    <button class="quick-action-btn">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Add Activity</span>
+                    </button>
+                    <button class="quick-action-btn">
+                        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        <span>Add Grocery</span>
+                    </button>
+                </div>
+
+                <!-- Preview Carousel -->
+                <section class="preview-carousel">
+                    <div class="section-header">
+                        <h2 class="section-title">Quick Preview</h2>
+                    </div>
+                    <div class="carousel-container">
+                        <!-- Ideas Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">Ideas</span>
+                            </div>
+                            <div class="ideas-columns">
+                                <div class="ideas-column">
+                                    <h4>Personal</h4>
+                                    <div class="idea-item">Learn guitar basics</div>
+                                    <div class="idea-item">Start a blog</div>
+                                    <div class="idea-item">Weekend hiking trip</div>
+                                </div>
+                                <div class="ideas-column">
+                                    <h4>Household</h4>
+                                    <div class="idea-item">Repaint living room</div>
+                                    <div class="idea-item">New patio furniture</div>
+                                    <div class="idea-item">Garden project</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Restaurants Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">Restaurants</span>
+                                <div class="preview-toggle">
+                                    <button class="preview-toggle-btn active">List</button>
+                                    <button class="preview-toggle-btn">Map</button>
+                                </div>
+                            </div>
+                            <div class="restaurant-row">
+                                <div class="restaurant-icon">
+                                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                                </div>
+                                <div class="restaurant-info">
+                                    <div class="restaurant-name">Cafe Luna</div>
+                                    <div class="restaurant-meta">Italian • $$</div>
+                                </div>
+                                <span class="restaurant-distance">0.8 mi</span>
+                            </div>
+                            <div class="restaurant-row">
+                                <div class="restaurant-icon">
+                                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                                </div>
+                                <div class="restaurant-info">
+                                    <div class="restaurant-name">Sakura Sushi</div>
+                                    <div class="restaurant-meta">Japanese • $$$</div>
+                                </div>
+                                <span class="restaurant-distance">1.2 mi</span>
+                            </div>
+                        </div>
+
+                        <!-- Recipes Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">Recipes</span>
+                            </div>
+                            <div class="recipe-item">
+                                <div class="recipe-thumb">
+                                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                                </div>
+                                <div class="recipe-info">
+                                    <div class="recipe-title">Creamy Tuscan Pasta</div>
+                                    <div class="recipe-desc">30 min • Easy • 4 servings</div>
+                                    <div class="recipe-actions">
+                                        <span class="recipe-source">TikTok</span>
+                                        <button class="add-groceries-btn">+ Groceries</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- To Do Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">To Do</span>
+                            </div>
+                            <div class="preview-toggle" style="margin-bottom: 12px; width: fit-content;">
+                                <button class="preview-toggle-btn active">All</button>
+                                <button class="preview-toggle-btn">Tasks</button>
+                                <button class="preview-toggle-btn">Activities</button>
+                            </div>
+                            <div style="height: 80px; background: var(--surface-darker); border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative;">
+                                <svg width="40" height="40" viewBox="0 0 24 24" stroke="var(--text-muted)" stroke-width="1.5" fill="none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                <div style="position: absolute; top: 15px; right: 20px; width: 10px; height: 10px; background: var(--accent-primary); border-radius: 50%;"></div>
+                                <div style="position: absolute; bottom: 20px; left: 30px; width: 8px; height: 8px; background: var(--accent-secondary); border-radius: 50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- FAB -->
+        <div class="fab-container">
+            <div class="fab-menu" id="fabMenu">
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Task</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Activity</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span>Idea</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <span>Grocery</span>
+                </div>
+            </div>
+            <button class="fab" id="fab" onclick="toggleFab()">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+        </div>
+
+        <!-- Tab Bar -->
+        <nav class="tab-bar">
+            <div class="tab-item active">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Today</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                <span>Ideas</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                <span>Food</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>Tasks</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                <span>Shop</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Cal</span>
+            </div>
+        </nav>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-header">
+                <button class="back-btn" onclick="toggleSettings()">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <h2 class="settings-title">Settings</h2>
+            </div>
+            <div class="settings-content">
+                <div class="settings-section">
+                    <div class="settings-section-title">Appearance</div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">Theme</span>
+                        <div class="theme-toggle">
+                            <span class="theme-option">Light</span>
+                            <span class="theme-option active">Dark</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-title">Manage Tabs</div>
+                    <div class="tab-manage-item">
+                        <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="tab-manage-name">Today</span>
+                        <button class="visibility-toggle active">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="default-toggle active">
+                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                    </div>
+                    <div class="tab-manage-item">
+                        <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="tab-manage-name">Ideas</span>
+                        <button class="visibility-toggle active">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="default-toggle">
+                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                    </div>
+                    <div class="tab-manage-item">
+                        <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="tab-manage-name">Restaurants</span>
+                        <button class="visibility-toggle active">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="default-toggle">
+                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-title">Household Permissions</div>
+                    <div class="permission-option active">
+                        <div class="permission-header">
+                            <div class="permission-radio"></div>
+                            <span class="permission-name">Collaborative</span>
+                        </div>
+                        <p class="permission-desc">All members can add, edit, and complete any items</p>
+                    </div>
+                    <div class="permission-option">
+                        <div class="permission-header">
+                            <div class="permission-radio"></div>
+                            <span class="permission-name">Strict</span>
+                        </div>
+                        <p class="permission-desc">Members can only modify their own items</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleFab() {
+            const fab = document.getElementById('fab');
+            const menu = document.getElementById('fabMenu');
+            fab.classList.toggle('open');
+            menu.classList.toggle('open');
+        }
+
+        function toggleForecast(toggle) {
+            toggle.classList.toggle('active');
+            document.getElementById('forecast').classList.toggle('visible');
+        }
+
+        function toggleCheck(checkbox) {
+            checkbox.classList.toggle('checked');
+        }
+
+        function toggleSettings() {
+            document.getElementById('settingsPanel').classList.toggle('open');
+        }
+    </script>
+</body>
+</html>

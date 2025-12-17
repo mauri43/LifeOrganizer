@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - TODAY & CALENDAR Screens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #f5f5f4;
+            --bg-card: #ffffff;
+            --bg-card-alt: #e5e7eb;
+            --accent-primary: #ef4444;
+            --accent-secondary: #0ea5e9;
+            --accent-tertiary: #22c55e;
+            --accent-amber: #fbbf24;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --border-strong: #111827;
+            --border-width: 2px;
+            --tab-bar-bg: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: #e5e5e5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .page-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                );
+            pointer-events: none;
+        }
+
+        .screens-container {
+            display: flex;
+            gap: 40px;
+            position: relative;
+            z-index: 1;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .device-frame {
+            width: 390px;
+            height: 844px;
+            background: var(--bg-app);
+            border: 4px solid var(--border-strong);
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 8px 8px 0 var(--border-strong);
+            flex-shrink: 0;
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 30px;
+            background: var(--border-strong);
+            border-radius: 0 0 16px 16px;
+            z-index: 100;
+        }
+
+        .app-container {
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 90px;
+            scrollbar-width: none;
+        }
+
+        .app-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Header */
+        .app-header {
+            padding: 48px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-app);
+            border-bottom: var(--border-width) solid var(--border-strong);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+
+        .household-selector {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .household-selector:hover {
+            background: var(--bg-card-alt);
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .household-selector span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+        }
+
+        .household-selector svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--text-primary);
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-secondary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .settings-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .settings-btn:hover {
+            background: var(--text-primary);
+        }
+
+        .settings-btn:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .settings-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Sub Header */
+        .sub-header {
+            padding: 12px 16px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .date-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            margin-bottom: 2px;
+        }
+
+        .welcome-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 0 16px;
+        }
+
+        /* Weather Card */
+        .weather-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin: 16px 0;
+            position: relative;
+        }
+
+        .weather-main {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .weather-location {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .weather-temp {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 64px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .weather-right {
+            text-align: right;
+        }
+
+        .weather-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            margin-left: auto;
+        }
+
+        .weather-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .weather-condition {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .weather-highlow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .weather-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: var(--bg-card-alt);
+        }
+
+        .weather-toggle-row span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .toggle-switch {
+            width: 40px;
+            height: 20px;
+            background: var(--text-muted);
+            border: var(--border-width) solid var(--border-strong);
+            position: relative;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .toggle-switch.active {
+            background: var(--accent-tertiary);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            width: 14px;
+            height: 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-strong);
+            transition: all 120ms ease-out;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        .weather-forecast {
+            display: none;
+            border-top: var(--border-width) solid var(--border-strong);
+        }
+
+        .weather-forecast.visible {
+            display: flex;
+        }
+
+        .forecast-day {
+            flex: 1;
+            text-align: center;
+            padding: 12px 8px;
+            border-right: var(--border-width) solid var(--border-strong);
+        }
+
+        .forecast-day:last-child {
+            border-right: none;
+        }
+
+        .forecast-day .day {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .forecast-day svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+            margin-bottom: 6px;
+        }
+
+        .forecast-day .temp {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Section Styles */
+        .section {
+            margin: 20px 0;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-left: 4px;
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            padding-left: 8px;
+        }
+
+        .section-action {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border: var(--border-width) solid transparent;
+            transition: all 120ms;
+        }
+
+        .section-action:hover {
+            border-color: var(--accent-secondary);
+        }
+
+        /* Activity List */
+        .activity-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .activity-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .activity-card:active {
+            box-shadow: none;
+            transform: translate(0, 0);
+        }
+
+        .activity-time-block {
+            width: 70px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border-right: var(--border-width) solid var(--border-strong);
+        }
+
+        .activity-time {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .activity-period {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            opacity: 0.7;
+        }
+
+        .activity-info {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .activity-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .activity-location {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .category-block {
+            width: 8px;
+            flex-shrink: 0;
+        }
+
+        .category-block.work { background: var(--accent-secondary); }
+        .category-block.personal { background: var(--accent-primary); }
+        .category-block.health { background: var(--accent-tertiary); }
+        .category-block.family { background: var(--accent-amber); }
+
+        /* Tasks Section */
+        .tasks-summary {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .summary-chip {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .summary-chip .count {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .summary-chip.overdue {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .summary-chip.overdue .count {
+            color: white;
+        }
+
+        .task-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .task-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .task-checkbox-block {
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+        }
+
+        .task-checkbox {
+            width: 22px;
+            height: 22px;
+            border: var(--border-width) solid var(--border-strong);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .task-checkbox:hover {
+            background: var(--bg-card-alt);
+        }
+
+        .task-checkbox.checked {
+            background: var(--accent-tertiary);
+        }
+
+        .task-checkbox svg {
+            width: 14px;
+            height: 14px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+        }
+
+        .task-checkbox.checked svg {
+            opacity: 1;
+        }
+
+        .task-info {
+            flex: 1;
+            padding: 10px 12px;
+        }
+
+        .task-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .priority-block {
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            border-left: var(--border-width) solid var(--border-strong);
+        }
+
+        .priority-block.high { background: var(--accent-primary); color: white; }
+        .priority-block.medium { background: var(--accent-amber); color: var(--text-primary); }
+        .priority-block.low { background: var(--accent-tertiary); color: white; }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+        }
+
+        .quick-action-btn {
+            padding: 12px 8px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .quick-action-btn:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .quick-action-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .quick-action-btn span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Preview Carousel */
+        .preview-carousel {
+            margin: 20px 0;
+        }
+
+        .carousel-container {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scrollbar-width: none;
+        }
+
+        .carousel-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .preview-card {
+            flex-shrink: 0;
+            width: 200px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            transition: all 120ms ease-out;
+        }
+
+        .preview-card:hover {
+            box-shadow: 4px 4px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .preview-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .preview-card-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .preview-card-body {
+            padding: 10px;
+            font-size: 11px;
+        }
+
+        /* CALENDAR SPECIFIC STYLES */
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: var(--bg-card);
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .calendar-nav-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .calendar-nav-btn:hover {
+            background: var(--text-primary);
+        }
+
+        .calendar-nav-btn:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .calendar-nav-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-primary);
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .calendar-month-year {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+        }
+
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            background: var(--bg-card-alt);
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .calendar-weekday {
+            text-align: center;
+            padding: 8px 4px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            border-right: 1px solid rgba(17, 24, 39, 0.1);
+        }
+
+        .calendar-weekday:last-child {
+            border-right: none;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            background: var(--bg-card);
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border-right: 1px solid rgba(17, 24, 39, 0.1);
+            border-bottom: 1px solid rgba(17, 24, 39, 0.1);
+            padding: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .calendar-day:nth-child(7n) {
+            border-right: none;
+        }
+
+        .calendar-day:hover {
+            background: var(--bg-card-alt);
+        }
+
+        .calendar-day.other-month {
+            opacity: 0.3;
+        }
+
+        .calendar-day.selected {
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+        }
+
+        .calendar-day.today {
+            border: var(--border-width) solid var(--accent-primary);
+        }
+
+        .calendar-day-number {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .calendar-day-dots {
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+        }
+
+        .activity-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+        }
+
+        .activity-dot.work { background: var(--accent-secondary); }
+        .activity-dot.personal { background: var(--accent-primary); }
+        .activity-dot.health { background: var(--accent-tertiary); }
+        .activity-dot.family { background: var(--accent-amber); }
+
+        .selected-day-panel {
+            padding: 16px;
+            background: var(--bg-app);
+        }
+
+        .selected-day-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .selected-day-date {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+        }
+
+        .view-toggle-btn {
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms;
+        }
+
+        .view-toggle-btn.active {
+            background: var(--accent-amber);
+            border-color: var(--accent-amber);
+        }
+
+        .view-toggle-btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--bg-card);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .view-toggle-btn.active svg {
+            stroke: var(--text-primary);
+        }
+
+        .day-activities-list .activity-card {
+            margin-bottom: 6px;
+        }
+
+        .day-activities-list .activity-time-block {
+            width: 60px;
+            font-size: 12px;
+        }
+
+        .day-activities-list .activity-title {
+            font-size: 13px;
+        }
+
+        .day-activities-list .activity-location {
+            font-size: 11px;
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: var(--tab-bar-bg);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding: 8px 4px 0;
+            z-index: 80;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .tab-item.active {
+            background: var(--accent-amber);
+        }
+
+        .tab-item svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--bg-card-alt);
+            stroke-width: 2;
+            fill: none;
+            transition: all 120ms;
+        }
+
+        .tab-item.active svg {
+            stroke: var(--text-primary);
+        }
+
+        .tab-item span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--bg-card-alt);
+            transition: all 120ms;
+        }
+
+        .tab-item.active span {
+            color: var(--text-primary);
+        }
+
+        .screen-label {
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            background: var(--accent-amber);
+            padding: 6px;
+            border: var(--border-width) solid var(--border-strong);
+        }
+
+        @media (max-width: 900px) {
+            .screens-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            body {
+                padding: 20px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <div class="screens-container">
+        <!-- TODAY SCREEN -->
+        <div class="device-frame">
+            <div class="device-notch"></div>
+            <div class="screen-label">TODAY / HOME</div>
+
+            <div class="app-container">
+                <!-- Header -->
+                <header class="app-header">
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </div>
+                        <span class="logo-text">Life Org</span>
+                    </div>
+                    <div class="household-selector">
+                        <span>My Home</span>
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                    <div class="header-right">
+                        <div class="avatar">A</div>
+                        <button class="settings-btn">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Sub Header -->
+                <div class="sub-header">
+                    <div class="date-text">Thu / Dec 12 / 2024</div>
+                    <div class="welcome-text">Good evening, Alex</div>
+                </div>
+
+                <!-- Main Content -->
+                <main class="main-content">
+                    <!-- Weather Card -->
+                    <div class="weather-card">
+                        <div class="weather-main">
+                            <div>
+                                <div class="weather-location">San Francisco, CA</div>
+                                <div class="weather-temp">68°</div>
+                            </div>
+                            <div class="weather-right">
+                                <div class="weather-icon">
+                                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                                </div>
+                                <div class="weather-condition">Partly Cloudy</div>
+                                <div class="weather-highlow">H:72° / L:58°</div>
+                            </div>
+                        </div>
+                        <div class="weather-toggle-row">
+                            <span>Weekly Forecast</span>
+                            <div class="toggle-switch active">
+                            </div>
+                        </div>
+                        <div class="weather-forecast visible">
+                            <div class="forecast-day">
+                                <div class="day">Fri</div>
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                                <div class="temp">70°</div>
+                            </div>
+                            <div class="forecast-day">
+                                <div class="day">Sat</div>
+                                <svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                                <div class="temp">65°</div>
+                            </div>
+                            <div class="forecast-day">
+                                <div class="day">Sun</div>
+                                <svg viewBox="0 0 24 24"><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>
+                                <div class="temp">62°</div>
+                            </div>
+                            <div class="forecast-day">
+                                <div class="day">Mon</div>
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                                <div class="temp">71°</div>
+                            </div>
+                            <div class="forecast-day">
+                                <div class="day">Tue</div>
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                                <div class="temp">73°</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Today's Schedule -->
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Today's Schedule</h2>
+                            <span class="section-action">See All →</span>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-time-block">
+                                <span class="activity-time">9:00</span>
+                                <span class="activity-period">AM</span>
+                            </div>
+                            <div class="activity-info">
+                                <div class="activity-title">Team Standup</div>
+                                <div class="activity-location">Zoom Meeting</div>
+                            </div>
+                            <div class="category-block work"></div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-time-block">
+                                <span class="activity-time">12:30</span>
+                                <span class="activity-period">PM</span>
+                            </div>
+                            <div class="activity-info">
+                                <div class="activity-title">Lunch with Sarah</div>
+                                <div class="activity-location">Cafe Luna</div>
+                            </div>
+                            <div class="category-block personal"></div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-time-block">
+                                <span class="activity-time">3:00</span>
+                                <span class="activity-period">PM</span>
+                            </div>
+                            <div class="activity-info">
+                                <div class="activity-title">Gym Session</div>
+                                <div class="activity-location">FitLife Gym</div>
+                            </div>
+                            <div class="category-block health"></div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-time-block">
+                                <span class="activity-time">6:30</span>
+                                <span class="activity-period">PM</span>
+                            </div>
+                            <div class="activity-info">
+                                <div class="activity-title">Family Dinner</div>
+                                <div class="activity-location">Home</div>
+                            </div>
+                            <div class="category-block family"></div>
+                        </div>
+                    </section>
+
+                    <!-- Tasks Section -->
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Tasks Due Today</h2>
+                            <span class="section-action">View All →</span>
+                        </div>
+
+                        <div class="tasks-summary">
+                            <div class="summary-chip">
+                                <span class="count">5</span> Tasks
+                            </div>
+                            <div class="summary-chip">
+                                <span class="count">4</span> Activities
+                            </div>
+                            <div class="summary-chip overdue">
+                                <span class="count">1</span> Overdue
+                            </div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-checkbox-block">
+                                <div class="task-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                            </div>
+                            <div class="task-info">
+                                <div class="task-title">Review Q4 budget proposal</div>
+                                <div class="task-meta">
+                                    <span>Due 5:00 PM</span>
+                                </div>
+                            </div>
+                            <div class="priority-block high">High</div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-checkbox-block">
+                                <div class="task-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                            </div>
+                            <div class="task-info">
+                                <div class="task-title">Prepare grocery list</div>
+                                <div class="task-meta">
+                                    <span>Due 8:00 PM</span>
+                                </div>
+                            </div>
+                            <div class="priority-block medium">Med</div>
+                        </div>
+
+                        <div class="task-card">
+                            <div class="task-checkbox-block">
+                                <div class="task-checkbox checked">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                            </div>
+                            <div class="task-info">
+                                <div class="task-title" style="text-decoration: line-through; opacity: 0.5;">Call dentist</div>
+                                <div class="task-meta" style="opacity: 0.5;">
+                                    <span>Completed</span>
+                                </div>
+                            </div>
+                            <div class="priority-block low">Low</div>
+                        </div>
+                    </section>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <button class="quick-action-btn">
+                            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+                            <span>+ Task</span>
+                        </button>
+                        <button class="quick-action-btn">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span>+ Activity</span>
+                        </button>
+                        <button class="quick-action-btn">
+                            <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                            <span>+ Grocery</span>
+                        </button>
+                    </div>
+
+                    <!-- Preview Carousel -->
+                    <section class="preview-carousel">
+                        <div class="section-header">
+                            <h2 class="section-title">Quick Preview</h2>
+                        </div>
+                        <div class="carousel-container">
+                            <div class="preview-card">
+                                <div class="preview-card-header">
+                                    <span class="preview-card-title">Ideas</span>
+                                </div>
+                                <div class="preview-card-body">
+                                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 6px;">Personal</div>
+                                    <div style="font-size: 11px; margin-bottom: 4px;">→ Learn guitar</div>
+                                    <div style="font-size: 11px; margin-bottom: 4px;">→ Start a blog</div>
+                                </div>
+                            </div>
+
+                            <div class="preview-card">
+                                <div class="preview-card-header">
+                                    <span class="preview-card-title">Food</span>
+                                </div>
+                                <div class="preview-card-body">
+                                    <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px;">Cafe Luna</div>
+                                    <div style="font-size: 10px; color: var(--text-secondary);">Italian • 0.8mi</div>
+                                </div>
+                            </div>
+
+                            <div class="preview-card">
+                                <div class="preview-card-header">
+                                    <span class="preview-card-title">Shopping</span>
+                                </div>
+                                <div class="preview-card-body">
+                                    <div style="font-size: 11px; margin-bottom: 3px;">✓ Milk</div>
+                                    <div style="font-size: 11px; margin-bottom: 3px;">○ Eggs</div>
+                                    <div style="font-size: 11px;">○ Bread</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </main>
+            </div>
+
+            <!-- Tab Bar -->
+            <nav class="tab-bar">
+                <div class="tab-item active">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Today</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span>Ideas</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    <span>Food</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>Tasks</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                    <span>Shop</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Cal</span>
+                </div>
+            </nav>
+        </div>
+
+        <!-- CALENDAR SCREEN -->
+        <div class="device-frame">
+            <div class="device-notch"></div>
+            <div class="screen-label">CALENDAR</div>
+
+            <div class="app-container">
+                <!-- Header -->
+                <header class="app-header">
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </div>
+                        <span class="logo-text">Life Org</span>
+                    </div>
+                    <div class="household-selector">
+                        <span>My Home</span>
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                    <div class="header-right">
+                        <div class="avatar">A</div>
+                        <button class="settings-btn">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Calendar Header -->
+                <div class="calendar-header">
+                    <button class="calendar-nav-btn">
+                        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <div class="calendar-month-year">December 2024</div>
+                    <button class="calendar-nav-btn">
+                        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+
+                <!-- Calendar Weekdays -->
+                <div class="calendar-weekdays">
+                    <div class="calendar-weekday">Sun</div>
+                    <div class="calendar-weekday">Mon</div>
+                    <div class="calendar-weekday">Tue</div>
+                    <div class="calendar-weekday">Wed</div>
+                    <div class="calendar-weekday">Thu</div>
+                    <div class="calendar-weekday">Fri</div>
+                    <div class="calendar-weekday">Sat</div>
+                </div>
+
+                <!-- Calendar Grid -->
+                <div class="calendar-grid">
+                    <!-- Previous month days -->
+                    <div class="calendar-day other-month">
+                        <div class="calendar-day-number">29</div>
+                    </div>
+                    <div class="calendar-day other-month">
+                        <div class="calendar-day-number">30</div>
+                    </div>
+
+                    <!-- Current month days -->
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">1</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot work"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">2</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">3</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot personal"></div>
+                            <div class="activity-dot health"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">4</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">5</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot work"></div>
+                        </div>
+                    </div>
+
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">6</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">7</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot family"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">8</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">9</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot work"></div>
+                            <div class="activity-dot work"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">10</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">11</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot personal"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day today">
+                        <div class="calendar-day-number">12</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot work"></div>
+                            <div class="activity-dot personal"></div>
+                            <div class="activity-dot health"></div>
+                            <div class="activity-dot family"></div>
+                        </div>
+                    </div>
+
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">13</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">14</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot work"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day selected">
+                        <div class="calendar-day-number">15</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot work"></div>
+                            <div class="activity-dot health"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">16</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">17</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot personal"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">18</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">19</div>
+                    </div>
+
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">20</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot family"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">21</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">22</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">23</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">24</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot family"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">25</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot family"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">26</div>
+                    </div>
+
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">27</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">28</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">29</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">30</div>
+                    </div>
+                    <div class="calendar-day">
+                        <div class="calendar-day-number">31</div>
+                        <div class="calendar-day-dots">
+                            <div class="activity-dot family"></div>
+                        </div>
+                    </div>
+
+                    <!-- Next month days -->
+                    <div class="calendar-day other-month">
+                        <div class="calendar-day-number">1</div>
+                    </div>
+                    <div class="calendar-day other-month">
+                        <div class="calendar-day-number">2</div>
+                    </div>
+                </div>
+
+                <!-- Selected Day Panel -->
+                <div class="selected-day-panel">
+                    <div class="selected-day-header">
+                        <div class="selected-day-date">Sunday, Dec 15</div>
+                        <div class="view-toggle">
+                            <button class="view-toggle-btn active">
+                                <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                            </button>
+                            <button class="view-toggle-btn">
+                                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="day-activities-list">
+                        <div class="activity-card">
+                            <div class="activity-time-block">
+                                <span class="activity-time">10:00</span>
+                                <span class="activity-period">AM</span>
+                            </div>
+                            <div class="activity-info">
+                                <div class="activity-title">Client Meeting</div>
+                                <div class="activity-location">Office - Conf Room A</div>
+                            </div>
+                            <div class="category-block work"></div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-time-block">
+                                <span class="activity-time">2:30</span>
+                                <span class="activity-period">PM</span>
+                            </div>
+                            <div class="activity-info">
+                                <div class="activity-title">Yoga Class</div>
+                                <div class="activity-location">Zen Studio</div>
+                            </div>
+                            <div class="category-block health"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Bar -->
+            <nav class="tab-bar">
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Today</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span>Ideas</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    <span>Food</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>Tasks</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                    <span>Shop</span>
+                </div>
+                <div class="tab-item active">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Cal</span>
+                </div>
+            </nav>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Neo-Brutalist Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #f5f5f4;
+            --bg-card: #ffffff;
+            --bg-card-alt: #e5e7eb;
+            --accent-primary: #ef4444;
+            --accent-secondary: #0ea5e9;
+            --accent-tertiary: #22c55e;
+            --accent-amber: #fbbf24;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --border-strong: #111827;
+            --border-width: 2px;
+            --tab-bar-bg: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: #e5e5e5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .page-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                );
+            pointer-events: none;
+        }
+
+        .device-frame {
+            width: 430px;
+            height: 932px;
+            background: var(--bg-app);
+            border: 4px solid var(--border-strong);
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 8px 8px 0 var(--border-strong);
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 30px;
+            background: var(--border-strong);
+            border-radius: 0 0 16px 16px;
+            z-index: 100;
+        }
+
+        .app-container {
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 90px;
+            scrollbar-width: none;
+        }
+
+        .app-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Header */
+        .app-header {
+            padding: 48px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-app);
+            border-bottom: var(--border-width) solid var(--border-strong);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+
+        .household-selector {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .household-selector:hover {
+            background: var(--bg-card-alt);
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .household-selector span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+        }
+
+        .household-selector svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--text-primary);
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-secondary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .settings-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .settings-btn:hover {
+            background: var(--text-primary);
+        }
+
+        .settings-btn:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .settings-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Sub Header */
+        .sub-header {
+            padding: 12px 16px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .date-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            margin-bottom: 2px;
+        }
+
+        .welcome-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 0 16px;
+        }
+
+        /* Weather Card */
+        .weather-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin: 16px 0;
+            position: relative;
+        }
+
+        .weather-main {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .weather-location {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .weather-temp {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 64px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .weather-right {
+            text-align: right;
+        }
+
+        .weather-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            margin-left: auto;
+        }
+
+        .weather-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .weather-condition {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .weather-highlow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .weather-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: var(--bg-card-alt);
+        }
+
+        .weather-toggle-row span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .toggle-switch {
+            width: 40px;
+            height: 20px;
+            background: var(--text-muted);
+            border: var(--border-width) solid var(--border-strong);
+            position: relative;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .toggle-switch.active {
+            background: var(--accent-tertiary);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            width: 14px;
+            height: 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-strong);
+            transition: all 120ms ease-out;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        .weather-forecast {
+            display: none;
+            border-top: var(--border-width) solid var(--border-strong);
+        }
+
+        .weather-forecast.visible {
+            display: flex;
+        }
+
+        .forecast-day {
+            flex: 1;
+            text-align: center;
+            padding: 12px 8px;
+            border-right: var(--border-width) solid var(--border-strong);
+        }
+
+        .forecast-day:last-child {
+            border-right: none;
+        }
+
+        .forecast-day .day {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .forecast-day svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+            margin-bottom: 6px;
+        }
+
+        .forecast-day .temp {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Section Styles */
+        .section {
+            margin: 20px 0;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-left: 4px;
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            padding-left: 8px;
+        }
+
+        .section-action {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border: var(--border-width) solid transparent;
+            transition: all 120ms;
+        }
+
+        .section-action:hover {
+            border-color: var(--accent-secondary);
+        }
+
+        /* Activity List */
+        .activity-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .activity-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .activity-card:active {
+            box-shadow: none;
+            transform: translate(0, 0);
+        }
+
+        .activity-time-block {
+            width: 70px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border-right: var(--border-width) solid var(--border-strong);
+        }
+
+        .activity-time {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .activity-period {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            opacity: 0.7;
+        }
+
+        .activity-info {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .activity-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .activity-location {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .category-block {
+            width: 8px;
+            flex-shrink: 0;
+        }
+
+        .category-block.work { background: var(--accent-secondary); }
+        .category-block.personal { background: var(--accent-primary); }
+        .category-block.health { background: var(--accent-tertiary); }
+        .category-block.family { background: var(--accent-amber); }
+
+        /* Tasks Section */
+        .tasks-summary {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .summary-chip {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .summary-chip .count {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .summary-chip.overdue {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .summary-chip.overdue .count {
+            color: white;
+        }
+
+        .task-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .task-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .task-checkbox-block {
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+        }
+
+        .task-checkbox {
+            width: 22px;
+            height: 22px;
+            border: var(--border-width) solid var(--border-strong);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .task-checkbox:hover {
+            background: var(--bg-card-alt);
+        }
+
+        .task-checkbox.checked {
+            background: var(--accent-tertiary);
+        }
+
+        .task-checkbox svg {
+            width: 14px;
+            height: 14px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+        }
+
+        .task-checkbox.checked svg {
+            opacity: 1;
+        }
+
+        .task-info {
+            flex: 1;
+            padding: 10px 12px;
+        }
+
+        .task-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .task-subtasks {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .task-subtasks svg {
+            width: 12px;
+            height: 12px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .priority-block {
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            border-left: var(--border-width) solid var(--border-strong);
+        }
+
+        .priority-block.high { background: var(--accent-primary); color: white; }
+        .priority-block.medium { background: var(--accent-amber); color: var(--text-primary); }
+        .priority-block.low { background: var(--accent-tertiary); color: white; }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+        }
+
+        .quick-action-btn {
+            padding: 12px 8px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .quick-action-btn:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .quick-action-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .quick-action-btn span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Preview Carousel */
+        .preview-carousel {
+            margin: 20px 0;
+        }
+
+        .carousel-container {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scrollbar-width: none;
+        }
+
+        .carousel-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .preview-card {
+            flex-shrink: 0;
+            width: 260px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            transition: all 120ms ease-out;
+        }
+
+        .preview-card:hover {
+            box-shadow: 4px 4px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .preview-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+            border-bottom: var(--border-width) solid var(--border-strong);
+        }
+
+        .preview-card-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .preview-toggle {
+            display: flex;
+        }
+
+        .preview-toggle-btn {
+            padding: 3px 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--bg-card);
+            background: transparent;
+            border: 1px solid var(--bg-card-alt);
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .preview-toggle-btn.active {
+            background: var(--accent-amber);
+            color: var(--text-primary);
+            border-color: var(--accent-amber);
+        }
+
+        .preview-card-body {
+            padding: 12px;
+        }
+
+        /* Ideas Preview */
+        .ideas-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .ideas-column h4 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border-strong);
+        }
+
+        .idea-item {
+            font-size: 12px;
+            color: var(--text-primary);
+            padding: 4px 0;
+            position: relative;
+            padding-left: 12px;
+        }
+
+        .idea-item::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--accent-primary);
+            font-weight: bold;
+        }
+
+        /* Restaurant Preview */
+        .restaurant-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-strong);
+        }
+
+        .restaurant-row:last-child {
+            border-bottom: none;
+        }
+
+        .restaurant-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent-amber);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .restaurant-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .restaurant-info {
+            flex: 1;
+        }
+
+        .restaurant-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .restaurant-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .restaurant-distance {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        /* Recipe Preview */
+        .recipe-item {
+            display: flex;
+            gap: 10px;
+        }
+
+        .recipe-thumb {
+            width: 60px;
+            height: 60px;
+            background: var(--bg-card-alt);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .recipe-thumb svg {
+            width: 28px;
+            height: 28px;
+            stroke: var(--text-muted);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .recipe-info {
+            flex: 1;
+        }
+
+        .recipe-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .recipe-desc {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .recipe-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .recipe-source {
+            padding: 2px 6px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .add-groceries-btn {
+            padding: 4px 8px;
+            background: var(--accent-tertiary);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: white;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .add-groceries-btn:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        /* FAB */
+        .fab-container {
+            position: absolute;
+            bottom: 100px;
+            right: 16px;
+            z-index: 60;
+        }
+
+        .fab {
+            width: 52px;
+            height: 52px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .fab:hover {
+            box-shadow: 4px 4px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .fab svg {
+            width: 26px;
+            height: 26px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            transition: transform 160ms ease-out;
+        }
+
+        .fab.open svg {
+            transform: rotate(45deg);
+        }
+
+        .fab-menu {
+            position: absolute;
+            bottom: 60px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            opacity: 0;
+            transform: translateY(8px) scale(0.95);
+            pointer-events: none;
+            transition: all 160ms ease-out;
+        }
+
+        .fab-menu.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+
+        .fab-mini {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            transition: all 120ms;
+            white-space: nowrap;
+        }
+
+        .fab-mini:hover {
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .fab-mini:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .fab-mini svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .fab-mini span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: var(--tab-bar-bg);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding: 8px 4px 0;
+            z-index: 80;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .tab-item.active {
+            background: var(--accent-amber);
+        }
+
+        .tab-item svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--bg-card-alt);
+            stroke-width: 2;
+            fill: none;
+            transition: all 120ms;
+        }
+
+        .tab-item.active svg {
+            stroke: var(--text-primary);
+        }
+
+        .tab-item span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--bg-card-alt);
+            transition: all 120ms;
+        }
+
+        .tab-item.active span {
+            color: var(--text-primary);
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-app);
+            z-index: 200;
+            transition: right 200ms ease-out;
+            overflow-y: auto;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            padding: 48px 16px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .back-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-primary);
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .settings-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .settings-content {
+            padding: 16px;
+        }
+
+        .settings-section {
+            margin-bottom: 24px;
+        }
+
+        .settings-section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            padding-left: 4px;
+            border-left: 3px solid var(--accent-primary);
+            padding-left: 8px;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+        }
+
+        .settings-row-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .theme-toggle {
+            display: flex;
+        }
+
+        .theme-option {
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .theme-option:first-child {
+            border-right: none;
+        }
+
+        .theme-option.active {
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .tab-manage-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 6px;
+        }
+
+        .drag-handle {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+            cursor: grab;
+        }
+
+        .tab-manage-name {
+            flex: 1;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .visibility-toggle, .default-toggle {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .visibility-toggle svg, .default-toggle svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .visibility-toggle.active svg {
+            stroke: var(--accent-secondary);
+        }
+
+        .default-toggle.active svg {
+            stroke: var(--accent-amber);
+            fill: var(--accent-amber);
+        }
+
+        .permission-option {
+            padding: 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .permission-option:hover {
+            box-shadow: 2px 2px 0 var(--border-strong);
+            transform: translate(-1px, -1px);
+        }
+
+        .permission-option.active {
+            border-color: var(--accent-secondary);
+            box-shadow: inset 0 0 0 2px var(--accent-secondary);
+        }
+
+        .permission-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .permission-radio {
+            width: 16px;
+            height: 16px;
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .permission-option.active .permission-radio {
+            background: var(--accent-secondary);
+        }
+
+        .permission-option.active .permission-radio::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--bg-card);
+        }
+
+        .permission-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .permission-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding-left: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <div class="device-frame">
+        <div class="device-notch"></div>
+
+        <div class="app-container">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Org</span>
+                </div>
+                <div class="household-selector">
+                    <span>My Home</span>
+                    <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="header-right">
+                    <div class="avatar">A</div>
+                    <button class="settings-btn" onclick="toggleSettings()">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Sub Header -->
+            <div class="sub-header">
+                <div class="date-text">Thu / Dec 11 / 2024</div>
+                <div class="welcome-text">Good evening, Alex</div>
+            </div>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Weather Card -->
+                <div class="weather-card">
+                    <div class="weather-main">
+                        <div>
+                            <div class="weather-location">San Francisco, CA</div>
+                            <div class="weather-temp">68°</div>
+                        </div>
+                        <div class="weather-right">
+                            <div class="weather-icon">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                            </div>
+                            <div class="weather-condition">Partly Cloudy</div>
+                            <div class="weather-highlow">H:72° / L:58°</div>
+                        </div>
+                    </div>
+                    <div class="weather-toggle-row">
+                        <span>Weekly Forecast</span>
+                        <div class="toggle-switch" onclick="toggleForecast(this)"></div>
+                    </div>
+                    <div class="weather-forecast" id="forecast">
+                        <div class="forecast-day">
+                            <div class="day">Fri</div>
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                            <div class="temp">70°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Sat</div>
+                            <svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                            <div class="temp">65°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Sun</div>
+                            <svg viewBox="0 0 24 24"><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>
+                            <div class="temp">62°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Mon</div>
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                            <div class="temp">71°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Tue</div>
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                            <div class="temp">73°</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Schedule -->
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Today's Schedule</h2>
+                        <span class="section-action">See All →</span>
+                    </div>
+
+                    <div class="activity-card">
+                        <div class="activity-time-block">
+                            <span class="activity-time">9:00</span>
+                            <span class="activity-period">AM</span>
+                        </div>
+                        <div class="activity-info">
+                            <div class="activity-title">Team Standup</div>
+                            <div class="activity-location">Zoom Meeting</div>
+                        </div>
+                        <div class="category-block work"></div>
+                    </div>
+
+                    <div class="activity-card">
+                        <div class="activity-time-block">
+                            <span class="activity-time">12:30</span>
+                            <span class="activity-period">PM</span>
+                        </div>
+                        <div class="activity-info">
+                            <div class="activity-title">Lunch with Sarah</div>
+                            <div class="activity-location">Cafe Luna</div>
+                        </div>
+                        <div class="category-block personal"></div>
+                    </div>
+
+                    <div class="activity-card">
+                        <div class="activity-time-block">
+                            <span class="activity-time">3:00</span>
+                            <span class="activity-period">PM</span>
+                        </div>
+                        <div class="activity-info">
+                            <div class="activity-title">Gym Session</div>
+                            <div class="activity-location">FitLife Gym</div>
+                        </div>
+                        <div class="category-block health"></div>
+                    </div>
+
+                    <div class="activity-card">
+                        <div class="activity-time-block">
+                            <span class="activity-time">6:30</span>
+                            <span class="activity-period">PM</span>
+                        </div>
+                        <div class="activity-info">
+                            <div class="activity-title">Family Dinner</div>
+                            <div class="activity-location">Home</div>
+                        </div>
+                        <div class="category-block family"></div>
+                    </div>
+                </section>
+
+                <!-- Tasks Section -->
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Tasks Due Today</h2>
+                        <span class="section-action">View All →</span>
+                    </div>
+
+                    <div class="tasks-summary">
+                        <div class="summary-chip">
+                            <span class="count">5</span> Tasks
+                        </div>
+                        <div class="summary-chip">
+                            <span class="count">4</span> Activities
+                        </div>
+                        <div class="summary-chip overdue">
+                            <span class="count">1</span> Overdue
+                        </div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox-block">
+                            <div class="task-checkbox" onclick="toggleCheck(this)">
+                                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Review Q4 budget proposal</div>
+                            <div class="task-meta">
+                                <span>Due 5:00 PM</span>
+                            </div>
+                        </div>
+                        <div class="priority-block high">High</div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox-block">
+                            <div class="task-checkbox" onclick="toggleCheck(this)">
+                                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Prepare grocery list</div>
+                            <div class="task-meta">
+                                <span>Due 8:00 PM</span>
+                                <div class="task-subtasks">
+                                    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                    3
+                                </div>
+                            </div>
+                        </div>
+                        <div class="priority-block medium">Med</div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox-block">
+                            <div class="task-checkbox checked" onclick="toggleCheck(this)">
+                                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title" style="text-decoration: line-through; opacity: 0.5;">Call dentist</div>
+                            <div class="task-meta" style="opacity: 0.5;">
+                                <span>Completed</span>
+                            </div>
+                        </div>
+                        <div class="priority-block low">Low</div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox-block">
+                            <div class="task-checkbox" onclick="toggleCheck(this)">
+                                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Order birthday gift for Mom</div>
+                            <div class="task-meta">
+                                <span>Due 11:59 PM</span>
+                            </div>
+                        </div>
+                        <div class="priority-block medium">Med</div>
+                    </div>
+                </section>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="quick-action-btn">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+                        <span>+ Task</span>
+                    </button>
+                    <button class="quick-action-btn">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>+ Activity</span>
+                    </button>
+                    <button class="quick-action-btn">
+                        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        <span>+ Grocery</span>
+                    </button>
+                </div>
+
+                <!-- Preview Carousel -->
+                <section class="preview-carousel">
+                    <div class="section-header">
+                        <h2 class="section-title">Quick Preview</h2>
+                    </div>
+                    <div class="carousel-container">
+                        <!-- Ideas Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">Ideas</span>
+                            </div>
+                            <div class="preview-card-body">
+                                <div class="ideas-columns">
+                                    <div class="ideas-column">
+                                        <h4>Personal</h4>
+                                        <div class="idea-item">Learn guitar</div>
+                                        <div class="idea-item">Start a blog</div>
+                                        <div class="idea-item">Hiking trip</div>
+                                    </div>
+                                    <div class="ideas-column">
+                                        <h4>Household</h4>
+                                        <div class="idea-item">Repaint room</div>
+                                        <div class="idea-item">New furniture</div>
+                                        <div class="idea-item">Garden</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Restaurants Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">Restaurants</span>
+                                <div class="preview-toggle">
+                                    <button class="preview-toggle-btn active">List</button>
+                                    <button class="preview-toggle-btn">Map</button>
+                                </div>
+                            </div>
+                            <div class="preview-card-body">
+                                <div class="restaurant-row">
+                                    <div class="restaurant-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                                    </div>
+                                    <div class="restaurant-info">
+                                        <div class="restaurant-name">Cafe Luna</div>
+                                        <div class="restaurant-meta">Italian • $$</div>
+                                    </div>
+                                    <span class="restaurant-distance">0.8mi</span>
+                                </div>
+                                <div class="restaurant-row">
+                                    <div class="restaurant-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                                    </div>
+                                    <div class="restaurant-info">
+                                        <div class="restaurant-name">Sakura Sushi</div>
+                                        <div class="restaurant-meta">Japanese • $$$</div>
+                                    </div>
+                                    <span class="restaurant-distance">1.2mi</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recipes Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">Recipes</span>
+                            </div>
+                            <div class="preview-card-body">
+                                <div class="recipe-item">
+                                    <div class="recipe-thumb">
+                                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                                    </div>
+                                    <div class="recipe-info">
+                                        <div class="recipe-title">Creamy Tuscan Pasta</div>
+                                        <div class="recipe-desc">30 min • Easy • 4 servings</div>
+                                        <div class="recipe-actions">
+                                            <span class="recipe-source">TikTok</span>
+                                            <button class="add-groceries-btn">+ Groceries</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- To Do Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">To Do</span>
+                            </div>
+                            <div class="preview-card-body">
+                                <div class="preview-toggle" style="margin-bottom: 10px;">
+                                    <button class="preview-toggle-btn active">All</button>
+                                    <button class="preview-toggle-btn">Tasks</button>
+                                    <button class="preview-toggle-btn">Activities</button>
+                                </div>
+                                <div style="height: 70px; background: var(--bg-card-alt); border: var(--border-width) solid var(--border-strong); display: flex; align-items: center; justify-content: center; position: relative;">
+                                    <svg width="36" height="36" viewBox="0 0 24 24" stroke="var(--text-muted)" stroke-width="2" fill="none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    <div style="position: absolute; top: 12px; right: 16px; width: 8px; height: 8px; background: var(--accent-primary);"></div>
+                                    <div style="position: absolute; bottom: 16px; left: 24px; width: 6px; height: 6px; background: var(--accent-secondary);"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- FAB -->
+        <div class="fab-container">
+            <div class="fab-menu" id="fabMenu">
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Task</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Activity</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span>Idea</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <span>Grocery</span>
+                </div>
+            </div>
+            <button class="fab" id="fab" onclick="toggleFab()">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+        </div>
+
+        <!-- Tab Bar -->
+        <nav class="tab-bar">
+            <div class="tab-item active">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Today</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                <span>Ideas</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                <span>Food</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>Tasks</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                <span>Shop</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Cal</span>
+            </div>
+        </nav>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-header">
+                <button class="back-btn" onclick="toggleSettings()">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <h2 class="settings-title">Settings</h2>
+            </div>
+            <div class="settings-content">
+                <div class="settings-section">
+                    <div class="settings-section-title">Appearance</div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">Theme</span>
+                        <div class="theme-toggle">
+                            <span class="theme-option active">Light</span>
+                            <span class="theme-option">Dark</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-title">Manage Tabs</div>
+                    <div class="tab-manage-item">
+                        <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="tab-manage-name">Today</span>
+                        <button class="visibility-toggle active">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="default-toggle active">
+                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                    </div>
+                    <div class="tab-manage-item">
+                        <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="tab-manage-name">Ideas</span>
+                        <button class="visibility-toggle active">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="default-toggle">
+                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                    </div>
+                    <div class="tab-manage-item">
+                        <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="tab-manage-name">Restaurants</span>
+                        <button class="visibility-toggle active">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="default-toggle">
+                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-title">Household Permissions</div>
+                    <div class="permission-option active">
+                        <div class="permission-header">
+                            <div class="permission-radio"></div>
+                            <span class="permission-name">Collaborative</span>
+                        </div>
+                        <p class="permission-desc">All members can add, edit, and complete any items</p>
+                    </div>
+                    <div class="permission-option">
+                        <div class="permission-header">
+                            <div class="permission-radio"></div>
+                            <span class="permission-name">Strict</span>
+                        </div>
+                        <p class="permission-desc">Members can only modify their own items</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleFab() {
+            const fab = document.getElementById('fab');
+            const menu = document.getElementById('fabMenu');
+            fab.classList.toggle('open');
+            menu.classList.toggle('open');
+        }
+
+        function toggleForecast(toggle) {
+            toggle.classList.toggle('active');
+            document.getElementById('forecast').classList.toggle('visible');
+        }
+
+        function toggleCheck(checkbox) {
+            checkbox.classList.toggle('checked');
+        }
+
+        function toggleSettings() {
+            document.getElementById('settingsPanel').classList.toggle('open');
+        }
+    </script>
+</body>
+</html>

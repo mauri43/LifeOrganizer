@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Editorial Home Journal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #fdfaf5;
+            --bg-card: #ffffff;
+            --bg-card-alt: #f8f5f0;
+            --accent-primary: #b45309;
+            --accent-secondary: #10b981;
+            --accent-tertiary: #3b82f6;
+            --accent-event: #f97316;
+            --text-primary: #1f2933;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --border-light: #e5e7eb;
+            --border-warm: #d4c5b0;
+            --shadow-soft: rgba(15,23,42,0.08);
+            --shadow-medium: rgba(15,23,42,0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: #e8e4de;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .page-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse at 30% 20%, rgba(180,83,9,0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(16,185,129,0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .device-frame {
+            width: 430px;
+            height: 932px;
+            background: var(--bg-app);
+            border-radius: 48px;
+            overflow: hidden;
+            position: relative;
+            box-shadow:
+                0 0 0 1px var(--border-warm),
+                0 25px 50px -12px rgba(0,0,0,0.15),
+                0 50px 100px -24px rgba(0,0,0,0.1);
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 32px;
+            background: #1f2933;
+            border-radius: 0 0 20px 20px;
+            z-index: 100;
+        }
+
+        .app-container {
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 100px;
+            scrollbar-width: none;
+        }
+
+        .app-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Header */
+        .app-header {
+            padding: 52px 24px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-app);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            background: var(--accent-primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(180,83,9,0.25);
+        }
+
+        .logo-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 20px;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .household-selector {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 24px;
+            cursor: pointer;
+            transition: all 260ms ease-out;
+            box-shadow: 0 2px 8px var(--shadow-soft);
+        }
+
+        .household-selector:hover {
+            background: var(--bg-card-alt);
+            box-shadow: 0 4px 16px var(--shadow-medium);
+            transform: translateY(-1px);
+        }
+
+        .household-selector span {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .household-selector svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-secondary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-event));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Playfair Display', serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            box-shadow: 0 4px 12px rgba(180,83,9,0.2);
+        }
+
+        .settings-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 260ms ease-out;
+            box-shadow: 0 2px 8px var(--shadow-soft);
+        }
+
+        .settings-btn:hover {
+            background: var(--bg-card-alt);
+            transform: translateY(-1px);
+        }
+
+        .settings-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-secondary);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        /* Sub Header */
+        .sub-header {
+            padding: 0 24px 20px;
+            background: var(--bg-app);
+        }
+
+        .date-text {
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent-primary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 6px;
+        }
+
+        .welcome-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .welcome-text em {
+            font-style: italic;
+            color: var(--accent-primary);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 0 24px;
+        }
+
+        /* Weather Card */
+        .weather-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 28px;
+            box-shadow:
+                0 4px 20px var(--shadow-soft),
+                0 16px 40px -20px var(--shadow-medium);
+            border: 1px solid var(--border-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .weather-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(251,191,36,0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .weather-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .weather-location {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .weather-location svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--accent-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .weather-temp {
+            font-family: 'Playfair Display', serif;
+            font-size: 60px;
+            font-weight: 400;
+            color: var(--text-primary);
+            line-height: 1;
+            letter-spacing: -2px;
+        }
+
+        .weather-temp span {
+            font-size: 32px;
+            color: var(--text-secondary);
+            vertical-align: top;
+        }
+
+        .weather-right {
+            text-align: right;
+        }
+
+        .weather-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            margin-left: auto;
+            box-shadow: 0 8px 24px rgba(251,191,36,0.3);
+        }
+
+        .weather-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: var(--accent-primary);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .weather-condition {
+            font-family: 'Playfair Display', serif;
+            font-size: 16px;
+            font-style: italic;
+            color: var(--text-primary);
+        }
+
+        .weather-highlow {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .weather-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .weather-toggle span {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .toggle-switch {
+            width: 48px;
+            height: 26px;
+            background: var(--border-light);
+            border-radius: 999px;
+            position: relative;
+            cursor: pointer;
+            transition: all 260ms ease-out;
+        }
+
+        .toggle-switch.active {
+            background: var(--accent-secondary);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: all 260ms ease-out;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(22px);
+        }
+
+        .weather-forecast {
+            display: none;
+            gap: 8px;
+            margin-top: 18px;
+            overflow-x: auto;
+            padding: 4px 0;
+        }
+
+        .weather-forecast.visible {
+            display: flex;
+            animation: fadeSlideUp 300ms ease-out;
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .forecast-day {
+            flex-shrink: 0;
+            text-align: center;
+            padding: 14px 18px;
+            background: var(--bg-card-alt);
+            border-radius: 14px;
+            transition: all 220ms ease-out;
+        }
+
+        .forecast-day:hover {
+            background: var(--bg-card);
+            box-shadow: 0 4px 16px var(--shadow-soft);
+            transform: translateY(-2px);
+        }
+
+        .forecast-day .day {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .forecast-day svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--accent-primary);
+            stroke-width: 1.5;
+            fill: none;
+            margin-bottom: 8px;
+        }
+
+        .forecast-day .temp {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* Section Styles */
+        .section {
+            margin-bottom: 32px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
+        }
+
+        .section-action {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent-primary);
+            cursor: pointer;
+            transition: color 260ms;
+        }
+
+        .section-action:hover {
+            color: var(--accent-secondary);
+        }
+
+        /* Activity List */
+        .activities-stack {
+            position: relative;
+        }
+
+        .activity-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: all 260ms ease-out;
+            box-shadow: 0 2px 12px var(--shadow-soft);
+            position: relative;
+        }
+
+        .activity-card:hover {
+            transform: translateY(-3px) scale(1.01);
+            box-shadow: 0 8px 30px var(--shadow-medium);
+        }
+
+        .activity-card:active {
+            transform: scale(0.99);
+        }
+
+        .activity-time-badge {
+            min-width: 56px;
+            text-align: center;
+        }
+
+        .activity-time {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .activity-period {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .activity-divider {
+            width: 1px;
+            height: 40px;
+            background: var(--border-light);
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+        }
+
+        .activity-location {
+            font-size: 13px;
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+
+        .category-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .category-dot.work { background: var(--accent-tertiary); }
+        .category-dot.personal { background: var(--accent-primary); }
+        .category-dot.health { background: var(--accent-secondary); }
+        .category-dot.family { background: var(--accent-event); }
+
+        /* Tasks Section */
+        .tasks-summary {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .summary-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--bg-card-alt);
+            border-radius: 999px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        .summary-chip .count {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--text-primary);
+        }
+
+        .summary-chip.overdue {
+            background: rgba(239,68,68,0.1);
+            border-color: rgba(239,68,68,0.2);
+        }
+
+        .summary-chip.overdue .count {
+            color: #ef4444;
+        }
+
+        .task-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 260ms ease-out;
+            box-shadow: 0 2px 8px var(--shadow-soft);
+        }
+
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px var(--shadow-medium);
+            background: var(--bg-card-alt);
+        }
+
+        .task-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--border-warm);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 220ms ease-out;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .task-checkbox:hover {
+            border-color: var(--accent-secondary);
+            background: rgba(16,185,129,0.1);
+        }
+
+        .task-checkbox.checked {
+            background: var(--accent-secondary);
+            border-color: var(--accent-secondary);
+        }
+
+        .task-checkbox svg {
+            width: 12px;
+            height: 12px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+        }
+
+        .task-checkbox.checked svg {
+            opacity: 1;
+        }
+
+        .task-info {
+            flex: 1;
+        }
+
+        .task-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .task-subtasks {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-style: italic;
+        }
+
+        .task-subtasks svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .priority-tag {
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .priority-tag.high { background: rgba(239,68,68,0.1); color: #ef4444; }
+        .priority-tag.medium { background: rgba(249,115,22,0.1); color: var(--accent-event); }
+        .priority-tag.low { background: rgba(16,185,129,0.1); color: var(--accent-secondary); }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 32px;
+        }
+
+        .quick-action-btn {
+            flex: 1;
+            padding: 16px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 260ms ease-out;
+            box-shadow: 0 2px 8px var(--shadow-soft);
+        }
+
+        .quick-action-btn:hover {
+            background: var(--bg-card-alt);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--shadow-medium);
+            border-color: var(--accent-primary);
+        }
+
+        .quick-action-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--accent-primary);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .quick-action-btn span {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* Preview Carousel */
+        .preview-carousel {
+            margin-bottom: 32px;
+        }
+
+        .carousel-container {
+            display: flex;
+            gap: 16px;
+            overflow-x: auto;
+            padding-bottom: 12px;
+            scrollbar-width: none;
+        }
+
+        .carousel-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .preview-card {
+            flex-shrink: 0;
+            width: 270px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 18px;
+            overflow: hidden;
+            transition: all 260ms ease-out;
+            box-shadow: 0 4px 16px var(--shadow-soft);
+        }
+
+        .preview-card:hover {
+            transform: translateY(-4px) rotate(-0.5deg);
+            box-shadow: 0 12px 40px var(--shadow-medium);
+        }
+
+        .preview-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--bg-card-alt);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .preview-card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .preview-toggle {
+            display: flex;
+            gap: 2px;
+            padding: 3px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border-light);
+        }
+
+        .preview-toggle-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 180ms;
+        }
+
+        .preview-toggle-btn.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .preview-card-body {
+            padding: 16px;
+        }
+
+        /* Ideas Preview */
+        .ideas-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .ideas-column h4 {
+            font-family: 'Playfair Display', serif;
+            font-size: 12px;
+            font-weight: 600;
+            font-style: italic;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .idea-item {
+            font-size: 13px;
+            color: var(--text-primary);
+            padding: 5px 0;
+            padding-left: 12px;
+            position: relative;
+        }
+
+        .idea-item::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--accent-primary);
+        }
+
+        /* Restaurant Preview */
+        .restaurant-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .restaurant-row:last-child {
+            border-bottom: none;
+        }
+
+        .restaurant-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .restaurant-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--accent-primary);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .restaurant-info {
+            flex: 1;
+        }
+
+        .restaurant-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .restaurant-meta {
+            font-size: 12px;
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+
+        .restaurant-distance {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Recipe Preview */
+        .recipe-item {
+            display: flex;
+            gap: 14px;
+        }
+
+        .recipe-thumb {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--bg-card-alt), var(--border-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .recipe-thumb svg {
+            width: 32px;
+            height: 32px;
+            stroke: var(--text-muted);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .recipe-info {
+            flex: 1;
+        }
+
+        .recipe-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+        }
+
+        .recipe-desc {
+            font-size: 12px;
+            font-style: italic;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .recipe-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .recipe-source {
+            padding: 3px 8px;
+            background: var(--bg-card-alt);
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .add-groceries-btn {
+            padding: 5px 12px;
+            background: var(--accent-secondary);
+            border: none;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 180ms;
+        }
+
+        .add-groceries-btn:hover {
+            background: var(--accent-primary);
+            transform: scale(1.05);
+        }
+
+        /* FAB */
+        .fab-container {
+            position: absolute;
+            bottom: 105px;
+            right: 24px;
+            z-index: 60;
+        }
+
+        .fab {
+            width: 58px;
+            height: 58px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-event));
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(180,83,9,0.35);
+            transition: all 260ms ease-out;
+        }
+
+        .fab:hover {
+            transform: scale(1.08) rotate(5deg);
+            box-shadow: 0 12px 32px rgba(180,83,9,0.45);
+        }
+
+        .fab svg {
+            width: 26px;
+            height: 26px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+            transition: transform 260ms ease-out;
+        }
+
+        .fab.open svg {
+            transform: rotate(45deg);
+        }
+
+        .fab-menu {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(12px) scale(0.9);
+            pointer-events: none;
+            transition: all 260ms ease-out;
+        }
+
+        .fab-menu.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+
+        .fab-mini {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 180ms;
+            white-space: nowrap;
+            box-shadow: 0 4px 16px var(--shadow-medium);
+        }
+
+        .fab-mini:hover {
+            background: var(--bg-card-alt);
+            transform: translateX(-4px);
+        }
+
+        .fab-mini svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--accent-primary);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .fab-mini span {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 88px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding: 10px 12px 0;
+            z-index: 80;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 180ms;
+        }
+
+        .tab-item:hover {
+            background: var(--bg-card-alt);
+        }
+
+        .tab-item.active {
+            background: rgba(180,83,9,0.1);
+        }
+
+        .tab-item svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--text-muted);
+            stroke-width: 1.5;
+            fill: none;
+            transition: all 180ms;
+        }
+
+        .tab-item.active svg {
+            stroke: var(--accent-primary);
+        }
+
+        .tab-item span {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 180ms;
+        }
+
+        .tab-item.active span {
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-app);
+            z-index: 200;
+            transition: right 300ms ease-out;
+            overflow-y: auto;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            padding: 52px 24px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .back-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .settings-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .settings-content {
+            padding: 24px;
+        }
+
+        .settings-section {
+            margin-bottom: 28px;
+        }
+
+        .settings-section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 13px;
+            font-weight: 600;
+            font-style: italic;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            margin-bottom: 10px;
+        }
+
+        .settings-row-label {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .theme-toggle {
+            display: flex;
+            gap: 6px;
+        }
+
+        .theme-option {
+            padding: 8px 16px;
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 180ms;
+        }
+
+        .theme-option.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .tab-manage-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            margin-bottom: 8px;
+        }
+
+        .drag-handle {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-muted);
+            stroke-width: 1.5;
+            fill: none;
+            cursor: grab;
+        }
+
+        .tab-manage-name {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .visibility-toggle, .default-toggle {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .visibility-toggle svg, .default-toggle svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-muted);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .visibility-toggle.active svg {
+            stroke: var(--accent-secondary);
+        }
+
+        .default-toggle.active svg {
+            stroke: var(--accent-event);
+            fill: var(--accent-event);
+        }
+
+        .permission-option {
+            padding: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 180ms;
+        }
+
+        .permission-option:hover {
+            background: var(--bg-card-alt);
+        }
+
+        .permission-option.active {
+            border-color: var(--accent-secondary);
+            box-shadow: inset 0 0 0 1px var(--accent-secondary);
+        }
+
+        .permission-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .permission-radio {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-warm);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .permission-option.active .permission-radio {
+            border-color: var(--accent-secondary);
+        }
+
+        .permission-option.active .permission-radio::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: var(--accent-secondary);
+            border-radius: 50%;
+        }
+
+        .permission-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .permission-desc {
+            font-size: 13px;
+            font-style: italic;
+            color: var(--text-secondary);
+            padding-left: 28px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <div class="device-frame">
+        <div class="device-notch"></div>
+
+        <div class="app-container">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <span class="logo-text">Life Organizer</span>
+                </div>
+                <div class="header-right">
+                    <div class="household-selector">
+                        <span>My Home</span>
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                    <div class="avatar">A</div>
+                    <button class="settings-btn" onclick="toggleSettings()">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Sub Header -->
+            <div class="sub-header">
+                <div class="date-text">Thursday, December 11</div>
+                <div class="welcome-text">Good evening, <em>Alex</em></div>
+            </div>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Weather Card -->
+                <div class="weather-card">
+                    <div class="weather-top">
+                        <div>
+                            <div class="weather-location">
+                                <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                San Francisco, CA
+                            </div>
+                            <div class="weather-temp">68<span>°F</span></div>
+                        </div>
+                        <div class="weather-right">
+                            <div class="weather-icon">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                            </div>
+                            <div class="weather-condition">Partly Cloudy</div>
+                            <div class="weather-highlow">High 72° • Low 58°</div>
+                        </div>
+                    </div>
+
+                    <div class="weather-toggle">
+                        <span>Show weekly forecast</span>
+                        <div class="toggle-switch" onclick="toggleForecast(this)"></div>
+                    </div>
+
+                    <div class="weather-forecast" id="forecast">
+                        <div class="forecast-day">
+                            <div class="day">Fri</div>
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                            <div class="temp">70°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Sat</div>
+                            <svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                            <div class="temp">65°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Sun</div>
+                            <svg viewBox="0 0 24 24"><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>
+                            <div class="temp">62°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Mon</div>
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                            <div class="temp">71°</div>
+                        </div>
+                        <div class="forecast-day">
+                            <div class="day">Tue</div>
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                            <div class="temp">73°</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Schedule -->
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Today's Schedule</h2>
+                        <span class="section-action">See All</span>
+                    </div>
+
+                    <div class="activities-stack">
+                        <div class="activity-card">
+                            <div class="activity-time-badge">
+                                <div class="activity-time">9:00</div>
+                                <div class="activity-period">AM</div>
+                            </div>
+                            <div class="activity-divider"></div>
+                            <div class="activity-info">
+                                <div class="activity-title">Team Standup</div>
+                                <div class="activity-location">Zoom Meeting</div>
+                            </div>
+                            <div class="category-dot work"></div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-time-badge">
+                                <div class="activity-time">12:30</div>
+                                <div class="activity-period">PM</div>
+                            </div>
+                            <div class="activity-divider"></div>
+                            <div class="activity-info">
+                                <div class="activity-title">Lunch with Sarah</div>
+                                <div class="activity-location">Cafe Luna</div>
+                            </div>
+                            <div class="category-dot personal"></div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-time-badge">
+                                <div class="activity-time">3:00</div>
+                                <div class="activity-period">PM</div>
+                            </div>
+                            <div class="activity-divider"></div>
+                            <div class="activity-info">
+                                <div class="activity-title">Gym Session</div>
+                                <div class="activity-location">FitLife Gym</div>
+                            </div>
+                            <div class="category-dot health"></div>
+                        </div>
+
+                        <div class="activity-card">
+                            <div class="activity-time-badge">
+                                <div class="activity-time">6:30</div>
+                                <div class="activity-period">PM</div>
+                            </div>
+                            <div class="activity-divider"></div>
+                            <div class="activity-info">
+                                <div class="activity-title">Family Dinner</div>
+                                <div class="activity-location">Home</div>
+                            </div>
+                            <div class="category-dot family"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tasks Section -->
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Tasks Due Today</h2>
+                        <span class="section-action">View All</span>
+                    </div>
+
+                    <div class="tasks-summary">
+                        <div class="summary-chip">
+                            <span class="count">5</span> Tasks
+                        </div>
+                        <div class="summary-chip">
+                            <span class="count">4</span> Activities
+                        </div>
+                        <div class="summary-chip overdue">
+                            <span class="count">1</span> Overdue
+                        </div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox" onclick="toggleCheck(this)">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Review Q4 budget proposal</div>
+                            <div class="task-meta">
+                                <span>Due 5:00 PM</span>
+                                <span class="priority-tag high">High</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox" onclick="toggleCheck(this)">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Prepare grocery list for weekend</div>
+                            <div class="task-meta">
+                                <span>Due 8:00 PM</span>
+                                <div class="task-subtasks">
+                                    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                    3 subtasks
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox checked" onclick="toggleCheck(this)">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title" style="text-decoration: line-through; opacity: 0.5;">Call dentist for appointment</div>
+                            <div class="task-meta" style="opacity: 0.5;">
+                                <span>Completed</span>
+                                <span class="priority-tag low">Low</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-checkbox" onclick="toggleCheck(this)">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">Order birthday gift for Mom</div>
+                            <div class="task-meta">
+                                <span>Due 11:59 PM</span>
+                                <span class="priority-tag medium">Medium</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="quick-action-btn">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+                        <span>Add Task</span>
+                    </button>
+                    <button class="quick-action-btn">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Add Activity</span>
+                    </button>
+                    <button class="quick-action-btn">
+                        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        <span>Add Grocery</span>
+                    </button>
+                </div>
+
+                <!-- Preview Carousel -->
+                <section class="preview-carousel">
+                    <div class="section-header">
+                        <h2 class="section-title">Quick Preview</h2>
+                    </div>
+                    <div class="carousel-container">
+                        <!-- Ideas Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">Ideas</span>
+                            </div>
+                            <div class="preview-card-body">
+                                <div class="ideas-columns">
+                                    <div class="ideas-column">
+                                        <h4>Personal</h4>
+                                        <div class="idea-item">Learn guitar basics</div>
+                                        <div class="idea-item">Start a blog</div>
+                                        <div class="idea-item">Weekend hiking trip</div>
+                                    </div>
+                                    <div class="ideas-column">
+                                        <h4>Household</h4>
+                                        <div class="idea-item">Repaint living room</div>
+                                        <div class="idea-item">New patio furniture</div>
+                                        <div class="idea-item">Garden project</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Restaurants Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">Restaurants</span>
+                                <div class="preview-toggle">
+                                    <button class="preview-toggle-btn active">List</button>
+                                    <button class="preview-toggle-btn">Map</button>
+                                </div>
+                            </div>
+                            <div class="preview-card-body">
+                                <div class="restaurant-row">
+                                    <div class="restaurant-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                                    </div>
+                                    <div class="restaurant-info">
+                                        <div class="restaurant-name">Cafe Luna</div>
+                                        <div class="restaurant-meta">Italian • $$</div>
+                                    </div>
+                                    <span class="restaurant-distance">0.8 mi</span>
+                                </div>
+                                <div class="restaurant-row">
+                                    <div class="restaurant-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                                    </div>
+                                    <div class="restaurant-info">
+                                        <div class="restaurant-name">Sakura Sushi</div>
+                                        <div class="restaurant-meta">Japanese • $$$</div>
+                                    </div>
+                                    <span class="restaurant-distance">1.2 mi</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recipes Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">Recipes</span>
+                            </div>
+                            <div class="preview-card-body">
+                                <div class="recipe-item">
+                                    <div class="recipe-thumb">
+                                        <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                                    </div>
+                                    <div class="recipe-info">
+                                        <div class="recipe-title">Creamy Tuscan Pasta</div>
+                                        <div class="recipe-desc">30 min • Easy • 4 servings</div>
+                                        <div class="recipe-actions">
+                                            <span class="recipe-source">TikTok</span>
+                                            <button class="add-groceries-btn">+ Groceries</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- To Do Preview -->
+                        <div class="preview-card">
+                            <div class="preview-card-header">
+                                <span class="preview-card-title">To Do</span>
+                            </div>
+                            <div class="preview-card-body">
+                                <div class="preview-toggle" style="margin-bottom: 12px; width: fit-content;">
+                                    <button class="preview-toggle-btn active">All</button>
+                                    <button class="preview-toggle-btn">Tasks</button>
+                                    <button class="preview-toggle-btn">Activities</button>
+                                </div>
+                                <div style="height: 80px; background: linear-gradient(135deg, var(--bg-card-alt), var(--border-light)); border-radius: 12px; display: flex; align-items: center; justify-content: center; position: relative;">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" stroke="var(--text-muted)" stroke-width="1.5" fill="none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    <div style="position: absolute; top: 15px; right: 20px; width: 10px; height: 10px; background: var(--accent-primary); border-radius: 50%;"></div>
+                                    <div style="position: absolute; bottom: 20px; left: 30px; width: 8px; height: 8px; background: var(--accent-secondary); border-radius: 50%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- FAB -->
+        <div class="fab-container">
+            <div class="fab-menu" id="fabMenu">
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Task</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Activity</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span>Idea</span>
+                </div>
+                <div class="fab-mini">
+                    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <span>Grocery</span>
+                </div>
+            </div>
+            <button class="fab" id="fab" onclick="toggleFab()">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+        </div>
+
+        <!-- Tab Bar -->
+        <nav class="tab-bar">
+            <div class="tab-item active">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Today</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                <span>Ideas</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                <span>Food</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>Tasks</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                <span>Shop</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Cal</span>
+            </div>
+        </nav>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-header">
+                <button class="back-btn" onclick="toggleSettings()">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <h2 class="settings-title">Settings</h2>
+            </div>
+            <div class="settings-content">
+                <div class="settings-section">
+                    <div class="settings-section-title">Appearance</div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">Theme</span>
+                        <div class="theme-toggle">
+                            <span class="theme-option active">Light</span>
+                            <span class="theme-option">Dark</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-title">Manage Tabs</div>
+                    <div class="tab-manage-item">
+                        <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="tab-manage-name">Today</span>
+                        <button class="visibility-toggle active">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="default-toggle active">
+                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                    </div>
+                    <div class="tab-manage-item">
+                        <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="tab-manage-name">Ideas</span>
+                        <button class="visibility-toggle active">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="default-toggle">
+                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                    </div>
+                    <div class="tab-manage-item">
+                        <svg class="drag-handle" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="tab-manage-name">Restaurants</span>
+                        <button class="visibility-toggle active">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="default-toggle">
+                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-title">Household Permissions</div>
+                    <div class="permission-option active">
+                        <div class="permission-header">
+                            <div class="permission-radio"></div>
+                            <span class="permission-name">Collaborative</span>
+                        </div>
+                        <p class="permission-desc">All members can add, edit, and complete any items</p>
+                    </div>
+                    <div class="permission-option">
+                        <div class="permission-header">
+                            <div class="permission-radio"></div>
+                            <span class="permission-name">Strict</span>
+                        </div>
+                        <p class="permission-desc">Members can only modify their own items</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleFab() {
+            const fab = document.getElementById('fab');
+            const menu = document.getElementById('fabMenu');
+            fab.classList.toggle('open');
+            menu.classList.toggle('open');
+        }
+
+        function toggleForecast(toggle) {
+            toggle.classList.toggle('active');
+            document.getElementById('forecast').classList.toggle('visible');
+        }
+
+        function toggleCheck(checkbox) {
+            checkbox.classList.toggle('checked');
+        }
+
+        function toggleSettings() {
+            document.getElementById('settingsPanel').classList.toggle('open');
+        }
+    </script>
+</body>
+</html>

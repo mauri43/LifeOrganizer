@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Ideas & Gifts Screens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #f5f5f4;
+            --bg-card: #ffffff;
+            --bg-card-alt: #e5e7eb;
+            --accent-primary: #ef4444;
+            --accent-secondary: #0ea5e9;
+            --accent-tertiary: #22c55e;
+            --accent-amber: #fbbf24;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --border-strong: #111827;
+            --border-width: 2px;
+            --tab-bar-bg: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: #e5e5e5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .page-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0,0,0,0.03) 40px,
+                    rgba(0,0,0,0.03) 41px
+                );
+            pointer-events: none;
+        }
+
+        .container {
+            display: flex;
+            gap: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .device-frame {
+            width: 390px;
+            height: 844px;
+            background: var(--bg-app);
+            border: 4px solid var(--border-strong);
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 8px 8px 0 var(--border-strong);
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 30px;
+            background: var(--border-strong);
+            border-radius: 0 0 16px 16px;
+            z-index: 100;
+        }
+
+        .app-container {
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 90px;
+            scrollbar-width: none;
+        }
+
+        .app-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Header */
+        .app-header {
+            padding: 48px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-app);
+            border-bottom: var(--border-width) solid var(--border-strong);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-secondary);
+            border: var(--border-width) solid var(--border-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .settings-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .settings-btn:hover {
+            background: var(--text-primary);
+        }
+
+        .settings-btn:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .settings-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Page Title Header */
+        .page-title-header {
+            padding: 12px 16px;
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .page-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 0 16px;
+        }
+
+        /* Toggle Tabs */
+        .toggle-tabs {
+            display: flex;
+            margin: 16px 0;
+            border: var(--border-width) solid var(--border-strong);
+            background: var(--bg-card);
+        }
+
+        .toggle-tab {
+            flex: 1;
+            padding: 10px 16px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border-right: var(--border-width) solid var(--border-strong);
+        }
+
+        .toggle-tab:last-child {
+            border-right: none;
+        }
+
+        .toggle-tab.active {
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        /* Section Styles */
+        .section {
+            margin: 20px 0;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-left: 4px;
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            padding-left: 8px;
+        }
+
+        /* Idea Card */
+        .idea-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .idea-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .idea-card:active {
+            box-shadow: none;
+            transform: translate(0, 0);
+        }
+
+        .idea-info {
+            flex: 1;
+        }
+
+        .idea-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .idea-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .idea-arrow {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Person Card (for Gifts) */
+        .person-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .person-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .person-card.active {
+            border-color: var(--accent-secondary);
+            box-shadow: inset 0 0 0 2px var(--accent-secondary);
+        }
+
+        .person-info {
+            flex: 1;
+        }
+
+        .person-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .person-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .birthday-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: var(--accent-amber);
+            border: 1px solid var(--border-strong);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .birthday-badge svg {
+            width: 10px;
+            height: 10px;
+            stroke: var(--text-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .gift-count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .person-arrow {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Gift Idea Card */
+        .gift-card {
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: stretch;
+            cursor: pointer;
+            transition: all 120ms ease-out;
+        }
+
+        .gift-card:hover {
+            box-shadow: 3px 3px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .gift-card.completed {
+            opacity: 0.6;
+        }
+
+        .gift-checkbox-block {
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+        }
+
+        .gift-checkbox {
+            width: 22px;
+            height: 22px;
+            border: var(--border-width) solid var(--border-strong);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .gift-checkbox:hover {
+            background: var(--bg-card-alt);
+        }
+
+        .gift-checkbox.checked {
+            background: var(--accent-tertiary);
+        }
+
+        .gift-checkbox svg {
+            width: 14px;
+            height: 14px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+        }
+
+        .gift-checkbox.checked svg {
+            opacity: 1;
+        }
+
+        .gift-info {
+            flex: 1;
+            padding: 10px 12px;
+        }
+
+        .gift-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .gift-card.completed .gift-title {
+            text-decoration: line-through;
+        }
+
+        .gift-tags {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gift-tag {
+            padding: 2px 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            border: 1px solid var(--border-strong);
+        }
+
+        .gift-tag.occasion {
+            background: var(--accent-secondary);
+            color: white;
+        }
+
+        .gift-tag.budget {
+            background: var(--accent-tertiary);
+            color: white;
+        }
+
+        /* Back Button */
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            transition: all 120ms ease-out;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .back-btn:hover {
+            background: var(--text-primary);
+            color: var(--bg-card);
+        }
+
+        .back-btn:hover svg {
+            stroke: var(--bg-card);
+        }
+
+        .back-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-primary);
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        /* FAB */
+        .fab-container {
+            position: absolute;
+            bottom: 100px;
+            right: 16px;
+            z-index: 60;
+        }
+
+        .fab {
+            width: 52px;
+            height: 52px;
+            background: var(--accent-primary);
+            border: var(--border-width) solid var(--border-strong);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 120ms ease-out;
+        }
+
+        .fab:hover {
+            box-shadow: 4px 4px 0 var(--border-strong);
+            transform: translate(-2px, -2px);
+        }
+
+        .fab svg {
+            width: 26px;
+            height: 26px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: var(--tab-bar-bg);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding: 8px 4px 0;
+            z-index: 80;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .tab-item.active {
+            background: var(--accent-amber);
+        }
+
+        .tab-item svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--bg-card-alt);
+            stroke-width: 2;
+            fill: none;
+            transition: all 120ms;
+        }
+
+        .tab-item.active svg {
+            stroke: var(--text-primary);
+        }
+
+        .tab-item span {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--bg-card-alt);
+            transition: all 120ms;
+        }
+
+        .tab-item.active span {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <div class="container">
+        <!-- IDEAS SCREEN -->
+        <div class="device-frame">
+            <div class="device-notch"></div>
+
+            <div class="app-container">
+                <!-- Header -->
+                <header class="app-header">
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </div>
+                        <span class="logo-text">Life Org</span>
+                    </div>
+                    <div class="header-right">
+                        <div class="avatar">A</div>
+                        <button class="settings-btn">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Page Title -->
+                <div class="page-title-header">
+                    <div class="page-title">Ideas</div>
+                </div>
+
+                <!-- Main Content -->
+                <main class="main-content">
+                    <!-- Toggle Tabs -->
+                    <div class="toggle-tabs">
+                        <div class="toggle-tab active">Personal</div>
+                        <div class="toggle-tab">Household</div>
+                    </div>
+
+                    <!-- Date Ideas Section -->
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Date Ideas</h2>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Sunset picnic at the beach</div>
+                                <div class="idea-meta">3 days ago</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Wine tasting in Napa</div>
+                                <div class="idea-meta">1 week ago</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Cooking class together</div>
+                                <div class="idea-meta">2 weeks ago</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </section>
+
+                    <!-- Travel Section -->
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Travel</h2>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Japan in spring (cherry blossoms)</div>
+                                <div class="idea-meta">5 days ago</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Road trip to national parks</div>
+                                <div class="idea-meta">1 week ago</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </section>
+
+                    <!-- Learning Section -->
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Learning</h2>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Learn Spanish with Duolingo</div>
+                                <div class="idea-meta">Today</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Photography course online</div>
+                                <div class="idea-meta">2 days ago</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Guitar lessons at Music Studio</div>
+                                <div class="idea-meta">1 week ago</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </section>
+
+                    <!-- Home Improvement Section -->
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Home Improvement</h2>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Install smart lighting system</div>
+                                <div class="idea-meta">4 days ago</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+
+                        <div class="idea-card">
+                            <div class="idea-info">
+                                <div class="idea-title">Build raised garden beds</div>
+                                <div class="idea-meta">1 week ago</div>
+                            </div>
+                            <svg class="idea-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </section>
+                </main>
+            </div>
+
+            <!-- FAB -->
+            <div class="fab-container">
+                <button class="fab">
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+            </div>
+
+            <!-- Tab Bar -->
+            <nav class="tab-bar">
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Today</span>
+                </div>
+                <div class="tab-item active">
+                    <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span>Ideas</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    <span>Food</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>Tasks</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>
+                    <span>Gifts</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                    <span>Shop</span>
+                </div>
+            </nav>
+        </div>
+
+        <!-- GIFTS SCREEN -->
+        <div class="device-frame">
+            <div class="device-notch"></div>
+
+            <div class="app-container">
+                <!-- Header -->
+                <header class="app-header">
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </div>
+                        <span class="logo-text">Life Org</span>
+                    </div>
+                    <div class="header-right">
+                        <div class="avatar">A</div>
+                        <button class="settings-btn">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Page Title -->
+                <div class="page-title-header">
+                    <div class="page-title">Gift Ideas</div>
+                </div>
+
+                <!-- Main Content -->
+                <main class="main-content">
+                    <!-- Back Button -->
+                    <button class="back-btn">
+                        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                        Back to People
+                    </button>
+
+                    <!-- Selected Person Header -->
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Mom's Gift Ideas</h2>
+                        </div>
+
+                        <div class="gift-card">
+                            <div class="gift-checkbox-block">
+                                <div class="gift-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                            </div>
+                            <div class="gift-info">
+                                <div class="gift-title">Spa day at Serenity Wellness</div>
+                                <div class="gift-tags">
+                                    <span class="gift-tag occasion">Birthday</span>
+                                    <span class="gift-tag budget">$150-200</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gift-card">
+                            <div class="gift-checkbox-block">
+                                <div class="gift-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                            </div>
+                            <div class="gift-info">
+                                <div class="gift-title">Cashmere scarf (blue or gray)</div>
+                                <div class="gift-tags">
+                                    <span class="gift-tag occasion">Birthday</span>
+                                    <span class="gift-tag budget">$80-120</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gift-card completed">
+                            <div class="gift-checkbox-block">
+                                <div class="gift-checkbox checked">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                            </div>
+                            <div class="gift-info">
+                                <div class="gift-title">Photo album with family pictures</div>
+                                <div class="gift-tags">
+                                    <span class="gift-tag occasion">Birthday</span>
+                                    <span class="gift-tag budget">$50</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gift-card">
+                            <div class="gift-checkbox-block">
+                                <div class="gift-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                            </div>
+                            <div class="gift-info">
+                                <div class="gift-title">KitchenAid stand mixer (red)</div>
+                                <div class="gift-tags">
+                                    <span class="gift-tag occasion">Christmas</span>
+                                    <span class="gift-tag budget">$300-400</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gift-card">
+                            <div class="gift-checkbox-block">
+                                <div class="gift-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                            </div>
+                            <div class="gift-info">
+                                <div class="gift-title">Subscription to Masterclass</div>
+                                <div class="gift-tags">
+                                    <span class="gift-tag occasion">Just Because</span>
+                                    <span class="gift-tag budget">$180/year</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Other People Section -->
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Other People</h2>
+                        </div>
+
+                        <div class="person-card">
+                            <div class="person-info">
+                                <div class="person-name">Dad</div>
+                                <div class="person-meta">
+                                    <span class="birthday-badge">
+                                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                        Aug 22
+                                    </span>
+                                    <span class="gift-count">4 ideas</span>
+                                </div>
+                            </div>
+                            <svg class="person-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+
+                        <div class="person-card">
+                            <div class="person-info">
+                                <div class="person-name">Sarah (Best Friend)</div>
+                                <div class="person-meta">
+                                    <span class="birthday-badge">
+                                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                        Nov 5
+                                    </span>
+                                    <span class="gift-count">6 ideas</span>
+                                </div>
+                            </div>
+                            <svg class="person-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+
+                        <div class="person-card">
+                            <div class="person-info">
+                                <div class="person-name">Jake (Brother)</div>
+                                <div class="person-meta">
+                                    <span class="birthday-badge">
+                                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                        Feb 14
+                                    </span>
+                                    <span class="gift-count">3 ideas</span>
+                                </div>
+                            </div>
+                            <svg class="person-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </section>
+                </main>
+            </div>
+
+            <!-- FAB -->
+            <div class="fab-container">
+                <button class="fab">
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+            </div>
+
+            <!-- Tab Bar -->
+            <nav class="tab-bar">
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Today</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span>Ideas</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                    <span>Food</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>Tasks</span>
+                </div>
+                <div class="tab-item active">
+                    <svg viewBox="0 0 24 24"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>
+                    <span>Gifts</span>
+                </div>
+                <div class="tab-item">
+                    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                    <span>Shop</span>
+                </div>
+            </nav>
+        </div>
+    </div>
+</body>
+</html>

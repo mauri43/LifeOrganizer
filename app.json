@@ -1,0 +1,78 @@
+{
+  "expo": {
+    "name": "LifeOrganizerSimple",
+    "slug": "LifeOrganizerSimple",
+    "version": "2.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for secure app access."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#60A5FA",
+          "sounds": []
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow $(PRODUCT_NAME) to access your calendar to display events."
+        }
+      ],
+      "./plugins/withIosWidget",
+      "./plugins/withIosShareExtension"
+    ],
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mauricio.lifeorganizer",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for secure app access.",
+        "NSLocationWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to access your location to show it on the map.",
+        "NSCalendarsUsageDescription": "Allow $(PRODUCT_NAME) to access your calendar to display events."
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.mauricio.lifeorganizer"
+        ]
+      },
+      "buildNumber": "2"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFB36D"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.mauricio.lifeorganizer"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2f1c43ba-cde9-4bb8-af06-03dab285f9bc"
+      }
+    }
+  }
+}

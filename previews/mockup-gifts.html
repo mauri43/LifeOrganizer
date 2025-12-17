@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Organizer - Gifts Screen Mockup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+            gap: 40px;
+            flex-wrap: wrap;
+        }
+
+        .phone-frame {
+            width: 430px;
+            height: 932px;
+            background: #000;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .phone-notch {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 30px;
+            background: #000;
+            border-radius: 0 0 20px 20px;
+            z-index: 1000;
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: #f5f5f4;
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .status-bar {
+            height: 54px;
+            background: #f5f5f4;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 30px 8px 30px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .header {
+            background: #ffffff;
+            border-bottom: 2px solid #111827;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-avatar {
+            width: 40px;
+            height: 40px;
+            background: #8B5CF6;
+            border: 2px solid #111827;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 16px;
+        }
+
+        .header-info {
+            flex: 1;
+        }
+
+        .header-greeting {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #666;
+        }
+
+        .header-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .header-icon {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #111827;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .header-icon:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .screen-title {
+            font-size: 28px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+            color: #111827;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .screen-title-icon {
+            width: 36px;
+            height: 36px;
+            background: #8B5CF6;
+            border: 2px solid #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+
+        .person-card {
+            background: #ffffff;
+            border: 2px solid #111827;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .person-card:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .person-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .person-icon {
+            width: 48px;
+            height: 48px;
+            background: #8B5CF6;
+            border: 2px solid #111827;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .person-info {
+            flex: 1;
+        }
+
+        .person-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .person-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border: 2px solid #111827;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+        }
+
+        .badge-birthday {
+            background: #fbbf24;
+            color: #111827;
+        }
+
+        .badge-count {
+            background: #8B5CF6;
+            color: white;
+        }
+
+        .add-button {
+            background: #ffffff;
+            border: 2px solid #111827;
+            padding: 16px;
+            width: 100%;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            margin-top: 12px;
+        }
+
+        .add-button:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .hint-text {
+            font-size: 11px;
+            color: #666;
+            font-style: italic;
+            margin-top: 20px;
+            text-align: center;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        /* Detail View Styles */
+        .detail-header {
+            background: #ffffff;
+            border-bottom: 2px solid #111827;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-button {
+            width: 36px;
+            height: 36px;
+            border: 2px solid #111827;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.2s;
+        }
+
+        .back-button:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .detail-title {
+            flex: 1;
+            font-size: 22px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .gift-card {
+            background: #ffffff;
+            border: 2px solid #111827;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .gift-card:hover {
+            box-shadow: 3px 3px 0 #111827;
+            transform: translate(-1px, -1px);
+        }
+
+        .gift-card.completed {
+            opacity: 0.7;
+            background: #f9fafb;
+        }
+
+        .gift-card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #111827;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .checkbox.checked {
+            background: #22c55e;
+        }
+
+        .checkbox.checked::after {
+            content: "✓";
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .gift-content {
+            flex: 1;
+        }
+
+        .gift-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .gift-title.completed {
+            text-decoration: line-through;
+        }
+
+        .gift-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .badge-occasion {
+            background: #0ea5e9;
+            color: white;
+        }
+
+        .badge-budget {
+            background: #22c55e;
+            color: white;
+        }
+
+        .gift-notes {
+            font-size: 13px;
+            color: #666;
+            font-family: 'IBM Plex Mono', monospace;
+            line-height: 1.5;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 90px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            background: #8B5CF6;
+            border: 2px solid #111827;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 #111827;
+            transition: all 0.2s;
+        }
+
+        .fab:hover {
+            box-shadow: 6px 6px 0 #111827;
+            transform: translate(-2px, -2px);
+        }
+
+        .tab-bar {
+            background: #111827;
+            height: 80px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px;
+            border-top: 2px solid #111827;
+        }
+
+        .tab {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 8px 12px;
+            transition: all 0.2s;
+            color: #888;
+        }
+
+        .tab.active {
+            color: #8B5CF6;
+        }
+
+        .tab-icon {
+            font-size: 24px;
+        }
+
+        .tab-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .view-label {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-hint {
+            font-size: 13px;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+    </style>
+</head>
+<body>
+    <!-- People List View -->
+    <div style="position: relative;">
+        <div class="view-label">People List View</div>
+        <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+                <!-- Status Bar -->
+                <div class="status-bar">
+                    <div>9:41</div>
+                    <div>100%</div>
+                </div>
+
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-avatar">M</div>
+                    <div class="header-info">
+                        <div class="header-greeting">Hello</div>
+                        <div class="header-name">Mauri</div>
+                    </div>
+                    <div class="header-icon">⚙</div>
+                </div>
+
+                <!-- Content -->
+                <div class="content">
+                    <div class="screen-title">
+                        <div class="screen-title-icon">🎁</div>
+                        GIFT IDEAS
+                    </div>
+
+                    <!-- Person Cards -->
+                    <div class="person-card">
+                        <div class="person-card-header">
+                            <div class="person-icon">👤</div>
+                            <div class="person-info">
+                                <div class="person-name">Sarah Johnson</div>
+                                <div class="person-meta">
+                                    <span class="badge badge-birthday">Mar 23</span>
+                                    <span class="badge badge-count">5 ideas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="person-card">
+                        <div class="person-card-header">
+                            <div class="person-icon">👤</div>
+                            <div class="person-info">
+                                <div class="person-name">Mom</div>
+                                <div class="person-meta">
+                                    <span class="badge badge-birthday">Jul 15</span>
+                                    <span class="badge badge-count">3 ideas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="person-card">
+                        <div class="person-card-header">
+                            <div class="person-icon">👤</div>
+                            <div class="person-info">
+                                <div class="person-name">Alex Chen</div>
+                                <div class="person-meta">
+                                    <span class="badge badge-birthday">Dec 8</span>
+                                    <span class="badge badge-count">2 ideas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="person-card">
+                        <div class="person-card-header">
+                            <div class="person-icon">👤</div>
+                            <div class="person-info">
+                                <div class="person-name">Dad</div>
+                                <div class="person-meta">
+                                    <span class="badge badge-birthday">Oct 2</span>
+                                    <span class="badge badge-count">4 ideas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="add-button">
+                        <span style="font-size: 20px;">+</span>
+                        Add Person
+                    </button>
+
+                    <div class="hint-text">
+                        💡 Long press a person to edit their birthday
+                    </div>
+                </div>
+
+                <!-- Tab Bar -->
+                <div class="tab-bar">
+                    <div class="tab">
+                        <div class="tab-icon">✓</div>
+                        <div class="tab-label">Tasks</div>
+                    </div>
+                    <div class="tab">
+                        <div class="tab-icon">📅</div>
+                        <div class="tab-label">Events</div>
+                    </div>
+                    <div class="tab">
+                        <div class="tab-icon">📝</div>
+                        <div class="tab-label">Notes</div>
+                    </div>
+                    <div class="tab active">
+                        <div class="tab-icon">🎁</div>
+                        <div class="tab-label">Gifts</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Person Detail View -->
+    <div style="position: relative;">
+        <div class="view-label">Person Detail View</div>
+        <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+                <!-- Status Bar -->
+                <div class="status-bar">
+                    <div>9:41</div>
+                    <div>100%</div>
+                </div>
+
+                <!-- Detail Header -->
+                <div class="detail-header">
+                    <div class="back-button">←</div>
+                    <div class="detail-title">Sarah Johnson</div>
+                    <div class="badge badge-birthday" style="margin: 0;">Mar 23</div>
+                </div>
+
+                <!-- Content -->
+                <div class="content" style="padding-bottom: 80px;">
+                    <!-- Completed Gift -->
+                    <div class="gift-card completed">
+                        <div class="gift-card-header">
+                            <div class="checkbox checked"></div>
+                            <div class="gift-content">
+                                <div class="gift-title completed">Wireless Headphones</div>
+                                <div class="gift-badges">
+                                    <span class="badge badge-occasion">Birthday</span>
+                                    <span class="badge badge-budget">$150</span>
+                                </div>
+                                <div class="gift-notes">Sony WH-1000XM5 - she mentioned loving music</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Gift Ideas -->
+                    <div class="gift-card">
+                        <div class="gift-card-header">
+                            <div class="checkbox"></div>
+                            <div class="gift-content">
+                                <div class="gift-title">Kindle Paperwhite</div>
+                                <div class="gift-badges">
+                                    <span class="badge badge-occasion">Birthday</span>
+                                    <span class="badge badge-budget">$140</span>
+                                </div>
+                                <div class="gift-notes">She reads a lot on vacation - perfect for travel</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gift-card">
+                        <div class="gift-card-header">
+                            <div class="checkbox"></div>
+                            <div class="gift-content">
+                                <div class="gift-title">Yoga Mat & Block Set</div>
+                                <div class="gift-badges">
+                                    <span class="badge badge-occasion">Christmas</span>
+                                    <span class="badge badge-budget">$80</span>
+                                </div>
+                                <div class="gift-notes">Started yoga classes last month, could use better equipment</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gift-card">
+                        <div class="gift-card-header">
+                            <div class="checkbox"></div>
+                            <div class="gift-content">
+                                <div class="gift-title">Cooking Class Voucher</div>
+                                <div class="gift-badges">
+                                    <span class="badge badge-occasion">Just Because</span>
+                                    <span class="badge badge-budget">$120</span>
+                                </div>
+                                <div class="gift-notes">Italian cooking - she's obsessed with pasta making</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gift-card">
+                        <div class="gift-card-header">
+                            <div class="checkbox"></div>
+                            <div class="gift-content">
+                                <div class="gift-title">Plant Subscription Box</div>
+                                <div class="gift-badges">
+                                    <span class="badge badge-occasion">Birthday</span>
+                                    <span class="badge badge-budget">$45/mo</span>
+                                </div>
+                                <div class="gift-notes">3-month subscription - her apartment has great light</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="add-button">
+                        <span style="font-size: 20px;">+</span>
+                        Add Gift Idea
+                    </button>
+                </div>
+
+                <!-- FAB -->
+                <div class="fab">+</div>
+
+                <!-- Tab Bar -->
+                <div class="tab-bar">
+                    <div class="tab">
+                        <div class="tab-icon">✓</div>
+                        <div class="tab-label">Tasks</div>
+                    </div>
+                    <div class="tab">
+                        <div class="tab-icon">📅</div>
+                        <div class="tab-label">Events</div>
+                    </div>
+                    <div class="tab">
+                        <div class="tab-icon">📝</div>
+                        <div class="tab-label">Notes</div>
+                    </div>
+                    <div class="tab active">
+                        <div class="tab-icon">🎁</div>
+                        <div class="tab-label">Gifts</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
