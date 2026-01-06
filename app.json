@@ -2,11 +2,11 @@
   "expo": {
     "name": "LifeOrganizerSimple",
     "slug": "LifeOrganizerSimple",
-    "version": "2.1.0",
+    "version": "2.1.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "plugins": [
       [
         "expo-local-authentication",
@@ -35,7 +35,14 @@
         }
       ],
       "./plugins/withIosWidget",
-      "./plugins/withIosShareExtension"
+      "./plugins/withIosShareExtension",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone for voice-to-text ideas.",
+          "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to use speech recognition to transcribe your voice into ideas."
+        }
+      ]
     ],
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -48,15 +55,25 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for secure app access.",
-        "NSLocationWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to access your location to show it on the map.",
-        "NSCalendarsUsageDescription": "Allow $(PRODUCT_NAME) to access your calendar to display events."
+        "NSLocationWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to access your location to show nearby items on the map.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to access your location in the background to notify you when you're near tasks, restaurants, or activities.",
+        "NSLocationAlwaysUsageDescription": "Allow $(PRODUCT_NAME) to access your location in the background to send location-based reminders.",
+        "NSCalendarsUsageDescription": "Allow $(PRODUCT_NAME) to access your calendar to display events.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ],
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone for voice-to-text ideas.",
+        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition to transcribe your voice into ideas.",
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photo library to add images."
       },
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.mauricio.lifeorganizer"
         ]
       },
-      "buildNumber": "2"
+      "buildNumber": "22"
     },
     "android": {
       "adaptiveIcon": {

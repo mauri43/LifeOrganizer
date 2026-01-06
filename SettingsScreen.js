@@ -32,13 +32,16 @@ import {
   GripVertical,
   ChevronDown,
   BookOpen,
+  Bell,
 } from 'lucide-react-native';
+import LocationSettings from './components/LocationSettings';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { Picker } from '@react-native-picker/picker';
+import { getThemeColors } from './theme';
 
 const SETTINGS_KEYS = {
-  THEME: 'theme',
+  THEME: '@life_organizer_theme',
   TAB_VISIBILITY: 'tabVisibility',
 };
 
@@ -266,28 +269,19 @@ export default function SettingsScreen({
   };
 
 
-  const themeColors = theme === 'light' ? {
-    background: '#fdfaf5',
-    surface: '#ffffff',
-    surfaceAlt: '#f8f5f0',
-    text: '#1f2933',
-    textSecondary: '#6b7280',
-    textMuted: '#9ca3af',
-    border: '#e5e7eb',
-    borderWarm: '#d4c5b0',
-    accent: '#b45309',
-    accentSecondary: '#10b981',
-  } : {
-    background: '#1c1917',
-    surface: '#292524',
-    surfaceAlt: '#44403c',
-    text: '#fafaf9',
-    textSecondary: '#a8a29e',
-    textMuted: '#78716c',
-    border: '#44403c',
-    borderWarm: '#57534e',
-    accent: '#d97706',
-    accentSecondary: '#10b981',
+  // Use centralized theme colors
+  const colors = getThemeColors(theme);
+  const themeColors = {
+    background: colors.background,
+    surface: colors.surface,
+    surfaceAlt: colors.surfaceElevated,
+    text: colors.text,
+    textSecondary: colors.textSecondary,
+    textMuted: colors.textMuted,
+    border: colors.border,
+    borderWarm: colors.borderWarm,
+    accent: colors.accent,
+    accentSecondary: colors.success,
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -431,6 +425,7 @@ export default function SettingsScreen({
     groceries: 'Groceries',
     gifts: 'Gifts',
     calendar: 'Calendar',
+    locationReminders: 'Location Reminders',
   };
 
   const tabOrderIconMap = {
@@ -629,6 +624,8 @@ export default function SettingsScreen({
             </View>
           </View>
         );
+      case 'locationReminders':
+        return <LocationSettings theme={theme} onClose={() => setActiveTabSettings(null)} />;
       default:
         return (
           <View style={styles.section}>
@@ -641,9 +638,9 @@ export default function SettingsScreen({
     }
   };
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: themeColors.background }}>
       <SafeAreaView style={dynamicStyles.safeArea}>
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         <View style={dynamicStyles.header}>
           {activeTabSettings ? (
             <>
@@ -874,6 +871,25 @@ export default function SettingsScreen({
                     })}
                   </View>
                 </View>
+              </View>
+
+              {/* Location Reminders Section */}
+              <View style={styles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Location Reminders</Text>
+                <Text style={dynamicStyles.sectionDescription}>
+                  Get notified when you're near tasks, activities, or restaurants
+                </Text>
+                <TouchableOpacity
+                  style={dynamicStyles.settingItem}
+                  onPress={() => setActiveTabSettings('locationReminders')}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.settingLeft}>
+                    <Bell size={20} color="#F59E0B" />
+                    <Text style={dynamicStyles.settingLabel}>Manage Location Reminders</Text>
+                  </View>
+                  <ChevronRight size={20} color={themeColors.textSecondary} />
+                </TouchableOpacity>
               </View>
 
           <View style={styles.section}>

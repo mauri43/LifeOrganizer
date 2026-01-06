@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life Organizer - Theme Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Source Sans 3', sans-serif; }
+
+    .container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .theme-panel {
+      flex: 1;
+      padding: 32px;
+    }
+
+    /* LIGHT MODE */
+    .light {
+      --background: #faf9f6;
+      --surface: #ffffff;
+      --surfaceElevated: #f8f5f0;
+      --text: #1f2933;
+      --textSecondary: #6b7280;
+      --textMuted: #9ca3af;
+      --accent: #b45309;
+      --accentLight: #fef3c7;
+      --border: #e5e7eb;
+      --borderWarm: #d4c5b0;
+      --inputBg: #ffffff;
+      --success: #10b981;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --restaurants: #ef4444;
+      --ideas: #8b5cf6;
+      --groceries: #10b981;
+      --todo: #2563eb;
+    }
+
+    /* DARK MODE */
+    .dark {
+      --background: #121212;
+      --surface: #1e1e1e;
+      --surfaceElevated: #2a2a2a;
+      --text: #f5f5f5;
+      --textSecondary: #a3a3a3;
+      --textMuted: #737373;
+      --accent: #d97706;
+      --accentLight: #422006;
+      --border: #2e2e2e;
+      --borderWarm: #4a3728;
+      --inputBg: #1e1e1e;
+      --success: #22c55e;
+      --error: #f87171;
+      --warning: #fbbf24;
+      --restaurants: #f87171;
+      --ideas: #a78bfa;
+      --groceries: #34d399;
+      --todo: #60a5fa;
+    }
+
+    .theme-panel {
+      background: var(--background);
+      color: var(--text);
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    h1 span { color: var(--accent); font-style: italic; }
+
+    .subtitle {
+      color: var(--textSecondary);
+      margin-bottom: 24px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-elevated {
+      background: var(--surfaceElevated);
+    }
+
+    .card-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .card-text {
+      color: var(--textSecondary);
+      font-size: 14px;
+    }
+
+    .card-muted {
+      color: var(--textMuted);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    /* Button */
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    /* Input */
+    .input {
+      background: var(--inputBg);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: var(--text);
+      width: 100%;
+      margin-bottom: 16px;
+      font-size: 15px;
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .input::placeholder {
+      color: var(--textMuted);
+    }
+
+    /* Categories */
+    .categories {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .category {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: white;
+    }
+
+    .cat-restaurants { background: var(--restaurants); }
+    .cat-ideas { background: var(--ideas); }
+    .cat-groceries { background: var(--groceries); }
+    .cat-todo { background: var(--todo); }
+
+    /* Accent highlight */
+    .accent-box {
+      background: var(--accentLight);
+      border: 1px solid var(--borderWarm);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .accent-box-text {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* Status colors */
+    .status-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-success { background: var(--success); }
+    .dot-error { background: var(--error); }
+    .dot-warning { background: var(--warning); }
+
+    /* Tab bar mockup */
+    .tab-bar {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      gap: 4px;
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--textSecondary);
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    /* Color swatches */
+    .swatches {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .swatch {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      display: flex;
+      align-items: flex-end;
+      padding: 6px;
+      font-size: 10px;
+      color: white;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- LIGHT MODE -->
+    <div class="theme-panel light">
+      <h1>Your <span>Today</span></h1>
+      <p class="subtitle">Light Mode Preview</p>
+
+      <div class="card">
+        <div class="card-title">Surface Card</div>
+        <div class="card-text">This is secondary text on a card surface.</div>
+        <div class="card-muted">Muted helper text</div>
+      </div>
+
+      <div class="card card-elevated">
+        <div class="card-title">Elevated Surface</div>
+        <div class="card-text">Slightly darker background for depth.</div>
+      </div>
+
+      <input type="text" class="input" placeholder="Enter your email...">
+
+      <div class="accent-box">
+        <span class="accent-box-text">Accent highlight box with warm border</span>
+      </div>
+
+      <div class="categories">
+        <span class="category cat-restaurants">Restaurants</span>
+        <span class="category cat-ideas">Ideas</span>
+        <span class="category cat-groceries">Groceries</span>
+        <span class="category cat-todo">To Do</span>
+      </div>
+
+      <div class="status-row">
+        <div class="status"><div class="dot dot-success"></div> Success</div>
+        <div class="status"><div class="dot dot-error"></div> Error</div>
+        <div class="status"><div class="dot dot-warning"></div> Warning</div>
+      </div>
+
+      <button class="btn">Primary Button</button>
+      <button class="btn btn-secondary">Secondary</button>
+
+      <div class="tab-bar" style="margin-top: 16px;">
+        <div class="tab active">Today</div>
+        <div class="tab">Ideas</div>
+        <div class="tab">To Do</div>
+        <div class="tab">Shop</div>
+      </div>
+
+      <div class="swatches">
+        <div class="swatch" style="background: #faf9f6; color: #1f2933;">bg</div>
+        <div class="swatch" style="background: #ffffff; border: 1px solid #e5e7eb; color: #1f2933;">surface</div>
+        <div class="swatch" style="background: #1f2933;">text</div>
+        <div class="swatch" style="background: #b45309;">accent</div>
+        <div class="swatch" style="background: #6b7280;">text2</div>
+        <div class="swatch" style="background: #e5e7eb; color: #1f2933;">border</div>
+        <div class="swatch" style="background: #fef3c7; color: #b45309;">accentLt</div>
+        <div class="swatch" style="background: #d4c5b0; color: #1f2933;">warm</div>
+      </div>
+    </div>
+
+    <!-- DARK MODE -->
+    <div class="theme-panel dark">
+      <h1>Your <span>Today</span></h1>
+      <p class="subtitle">Dark Mode Preview</p>
+
+      <div class="card">
+        <div class="card-title">Surface Card</div>
+        <div class="card-text">This is secondary text on a card surface.</div>
+        <div class="card-muted">Muted helper text</div>
+      </div>
+
+      <div class="card card-elevated">
+        <div class="card-title">Elevated Surface</div>
+        <div class="card-text">Slightly lighter background for depth.</div>
+      </div>
+
+      <input type="text" class="input" placeholder="Enter your email...">
+
+      <div class="accent-box">
+        <span class="accent-box-text">Accent highlight box with warm border</span>
+      </div>
+
+      <div class="categories">
+        <span class="category cat-restaurants">Restaurants</span>
+        <span class="category cat-ideas">Ideas</span>
+        <span class="category cat-groceries">Groceries</span>
+        <span class="category cat-todo">To Do</span>
+      </div>
+
+      <div class="status-row">
+        <div class="status"><div class="dot dot-success"></div> Success</div>
+        <div class="status"><div class="dot dot-error"></div> Error</div>
+        <div class="status"><div class="dot dot-warning"></div> Warning</div>
+      </div>
+
+      <button class="btn">Primary Button</button>
+      <button class="btn btn-secondary">Secondary</button>
+
+      <div class="tab-bar" style="margin-top: 16px;">
+        <div class="tab active">Today</div>
+        <div class="tab">Ideas</div>
+        <div class="tab">To Do</div>
+        <div class="tab">Shop</div>
+      </div>
+
+      <div class="swatches">
+        <div class="swatch" style="background: #121212;">bg</div>
+        <div class="swatch" style="background: #1e1e1e;">surface</div>
+        <div class="swatch" style="background: #f5f5f5;">text</div>
+        <div class="swatch" style="background: #d97706;">accent</div>
+        <div class="swatch" style="background: #a3a3a3;">text2</div>
+        <div class="swatch" style="background: #2e2e2e;">border</div>
+        <div class="swatch" style="background: #422006;">accentLt</div>
+        <div class="swatch" style="background: #4a3728;">warm</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

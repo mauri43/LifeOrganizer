@@ -14,8 +14,11 @@ import * as Clipboard from 'expo-clipboard';
 import { User, Copy, LogOut, Settings, Shield, Users, Trash2, Crown } from 'lucide-react-native';
 import { getDoc, doc, updateDoc, arrayRemove, arrayUnion, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { getThemeColors } from './theme';
 
-export default function ProfileScreen({ onClose, householdId, onLeaveHousehold, onJoinCreate, onOpenSettings }) {
+export default function ProfileScreen({ onClose, householdId, onLeaveHousehold, onJoinCreate, onOpenSettings, theme = 'light' }) {
+  const colors = getThemeColors(theme);
+  const isDark = theme === 'dark';
     const [householdName, setHouseholdName] = useState('');
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState('');
@@ -342,22 +345,167 @@ useEffect(() => {
     );
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 20,
+      paddingTop: 52,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    headerTitle: {
+      fontSize: 28,
+      fontWeight: '500',
+      color: colors.text,
+      letterSpacing: -0.5,
+    },
+    closeButton: {
+      color: colors.accent,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    settingsButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    content: {
+      flex: 1,
+      padding: 24,
+      backgroundColor: colors.background,
+    },
+    profileInfo: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 18,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    profileLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 6,
+      textTransform: 'uppercase',
+      fontWeight: '500',
+      letterSpacing: 1.2,
+    },
+    profileValue: {
+      fontSize: 16,
+      color: colors.text,
+      fontWeight: '400',
+    },
+    editButton: {
+      color: colors.accent,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    editInput: {
+      backgroundColor: isDark ? colors.inputBg : '#fdfaf5',
+      borderRadius: 12,
+      padding: 14,
+      color: colors.text,
+      fontSize: 16,
+      marginTop: 4,
+      borderWidth: 2,
+      borderColor: colors.accent,
+    },
+    codeContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      padding: 18,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.accent,
+    },
+    codeText: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+      letterSpacing: 1.5,
+    },
+    memberItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      padding: 16,
+      borderRadius: 16,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    memberName: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    memberEmail: {
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    memberActionButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      backgroundColor: isDark ? colors.surfaceElevated : '#f8f5f0',
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    memberActionText: {
+      color: colors.accent,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    hint: {
+      color: colors.textMuted,
+      fontSize: 13,
+      marginTop: 8,
+      fontStyle: 'italic',
+    },
+    cancelButton: {
+      color: colors.textMuted,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    saveButton: {
+      color: colors.success,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={dynamicStyles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
+        <View style={dynamicStyles.header}>
+          <Text style={dynamicStyles.headerTitle}>Profile</Text>
           <View style={styles.headerRight}>
-            <TouchableOpacity onPress={onOpenSettings} style={styles.settingsButton}>
-              <Settings size={20} color="#6b7280" />
+            <TouchableOpacity onPress={onOpenSettings} style={dynamicStyles.settingsButton}>
+              <Settings size={20} color={colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity onPress={onClose}>
-              <Text style={styles.closeButton}>Done</Text>
+              <Text style={dynamicStyles.closeButton}>Done</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <ScrollView style={styles.content}>
+        <ScrollView style={dynamicStyles.content}>
         {/* Admin Banner */}
         {isAdmin && (
           <View style={styles.adminBanner}>
@@ -367,98 +515,98 @@ useEffect(() => {
         )}
 
         {/* Name */}
-{/* Name */}
-<View style={styles.profileInfo}>
+        <View style={dynamicStyles.profileInfo}>
           <View style={styles.editableHeader}>
-            <Text style={styles.profileLabel}>Name</Text>
+            <Text style={dynamicStyles.profileLabel}>Name</Text>
             {!editingName ? (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   setTempName(userName);
                   setEditingName(true);
                 }}
               >
-                <Text style={styles.editButton}>Edit</Text>
+                <Text style={dynamicStyles.editButton}>Edit</Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.editActions}>
                 <TouchableOpacity onPress={() => setEditingName(false)}>
-                  <Text style={styles.cancelButton}>Cancel</Text>
+                  <Text style={dynamicStyles.cancelButton}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleSaveName}>
-                  <Text style={styles.saveButton}>Save</Text>
+                  <Text style={dynamicStyles.saveButton}>Save</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
           {editingName ? (
             <TextInput
-              style={styles.editInput}
+              style={dynamicStyles.editInput}
               value={tempName}
               onChangeText={setTempName}
               autoFocus
+              placeholderTextColor={colors.textMuted}
             />
           ) : (
-            <Text style={styles.profileValue}>{userName || 'Loading...'}</Text>
+            <Text style={dynamicStyles.profileValue}>{userName || 'Loading...'}</Text>
           )}
         </View>
 
         {/* Username */}
-        <View style={styles.profileInfo}>
-          <Text style={styles.profileLabel}>Username</Text>
-          <Text style={styles.profileValue}>{username || 'Loading......'}</Text>
+        <View style={dynamicStyles.profileInfo}>
+          <Text style={dynamicStyles.profileLabel}>Username</Text>
+          <Text style={dynamicStyles.profileValue}>{username || 'Loading......'}</Text>
         </View>
 
         {/* Email */}
-        <View style={styles.profileInfo}>
-          <Text style={styles.profileLabel}>Email</Text>
-          <Text style={styles.profileValue}>{auth.currentUser?.email}</Text>
+        <View style={dynamicStyles.profileInfo}>
+          <Text style={dynamicStyles.profileLabel}>Email</Text>
+          <Text style={dynamicStyles.profileValue}>{auth.currentUser?.email}</Text>
         </View>
 
-        {/* Household Name */}
         {/* Household Name or Join/Create */}
         {householdId ? (
-          <View style={styles.profileInfo}>
+          <View style={dynamicStyles.profileInfo}>
             <View style={styles.editableHeader}>
-              <Text style={styles.profileLabel}>Household Name</Text>
+              <Text style={dynamicStyles.profileLabel}>Household Name</Text>
               {!editingHousehold && isAdmin && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => {
                     setTempHouseholdName(householdName);
                     setEditingHousehold(true);
                   }}
                 >
-                  <Text style={styles.editButton}>Edit</Text>
+                  <Text style={dynamicStyles.editButton}>Edit</Text>
                 </TouchableOpacity>
               )}
               {editingHousehold && (
                 <View style={styles.editActions}>
                   <TouchableOpacity onPress={() => setEditingHousehold(false)}>
-                    <Text style={styles.cancelButton}>Cancel</Text>
+                    <Text style={dynamicStyles.cancelButton}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={handleSaveHouseholdName}>
-                    <Text style={styles.saveButton}>Save</Text>
+                    <Text style={dynamicStyles.saveButton}>Save</Text>
                   </TouchableOpacity>
                 </View>
               )}
             </View>
             {editingHousehold ? (
               <TextInput
-                style={styles.editInput}
+                style={dynamicStyles.editInput}
                 value={tempHouseholdName}
                 onChangeText={setTempHouseholdName}
                 autoFocus
+                placeholderTextColor={colors.textMuted}
               />
             ) : (
-              <Text style={styles.profileValue}>{householdName || 'Loading...'}</Text>
+              <Text style={dynamicStyles.profileValue}>{householdName || 'Loading...'}</Text>
             )}
           </View>
         ) : (
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileLabel}>Household</Text>
-            <Text style={styles.profileValue}>No household joined</Text>
+          <View style={dynamicStyles.profileInfo}>
+            <Text style={dynamicStyles.profileLabel}>Household</Text>
+            <Text style={dynamicStyles.profileValue}>No household joined</Text>
             {onJoinCreate && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.joinCreateButton}
                 onPress={onJoinCreate}
               >
@@ -471,15 +619,15 @@ useEffect(() => {
           {/* Household Code Section - Admin Only */}
           {householdId && isAdmin && (
             <View style={styles.section}>
-              <Text style={styles.profileLabel}>Household Invite Code</Text>
+              <Text style={dynamicStyles.profileLabel}>Household Invite Code</Text>
               <TouchableOpacity
-                style={styles.codeContainer}
+                style={dynamicStyles.codeContainer}
                 onPress={() => copyToClipboard(householdId, 'Invite code')}
               >
-                <Text style={styles.codeText}>{householdId}</Text>
-                <Copy size={20} color="#b45309" />
+                <Text style={dynamicStyles.codeText}>{householdId}</Text>
+                <Copy size={20} color={colors.accent} />
               </TouchableOpacity>
-              <Text style={styles.hint}>Tap to copy and share with others</Text>
+              <Text style={dynamicStyles.hint}>Tap to copy and share with others</Text>
               <TouchableOpacity
                 style={styles.inviteButton}
                 onPress={handleInviteOthers}
@@ -492,20 +640,20 @@ useEffect(() => {
           {/* Member Management - Admin Only */}
           {householdId && isAdmin && (
             <View style={styles.section}>
-              <Text style={styles.profileLabel}>Household Members</Text>
+              <Text style={dynamicStyles.profileLabel}>Household Members</Text>
               {householdMembers.map((member) => (
-                <View key={member.id} style={styles.memberItem}>
+                <View key={member.id} style={dynamicStyles.memberItem}>
                   <View style={styles.memberInfo}>
                     <View style={styles.memberHeader}>
-                      <Text style={styles.memberName}>{member.name}</Text>
+                      <Text style={dynamicStyles.memberName}>{member.name}</Text>
                       {member.isAdmin && (
                         <View style={styles.adminBadge}>
-                          <Crown size={14} color="#b45309" />
+                          <Crown size={14} color={colors.accent} />
                           <Text style={styles.adminBadgeText}>Admin</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={styles.memberEmail}>{member.email}</Text>
+                    <Text style={dynamicStyles.memberEmail}>{member.email}</Text>
                   </View>
                   <View style={styles.memberActions}>
                     {(() => {

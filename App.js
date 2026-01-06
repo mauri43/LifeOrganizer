@@ -1,4 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+
+// Speech recognition will be loaded lazily after app mounts
+let ExpoSpeechRecognitionModule = null;
+let speechRecognitionAvailable = false;
+
+// No-op hook that does nothing (used when speech recognition isn't available)
+const useSpeechRecognitionEvent = (_event, _callback) => {
+  // This is intentionally empty - it's a fallback when the module isn't loaded
+};
 import { onAuthStateChanged } from 'firebase/auth';
 import { useFonts } from 'expo-font';
 import {
@@ -28,10 +37,14 @@ import ProfileScreen from './ProfileScreen';
 import UserProfileSetup from './UserProfileSetup';
 import SettingsScreen from './SettingsScreen';
 import { syncWidgetData, prepareWidgetData } from './widgetDataSync';
+import { ThemeProvider, useTheme } from './ThemeContext';
+import { lightColors, darkColors, getThemeColors, getCategoryColor as getThemeCategoryColor, getPriorityColor as getThemePriorityColor } from './theme';
 import { processRecipeQueue } from './recipeQueueProcessor';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import FireworkEffect from './FireworkEffect';
+import LocationReminderToggle from './components/LocationReminderToggle';
+import locationReminderService from './services/LocationReminderService';
 import {
   View,
   Text,
@@ -53,6 +66,8 @@ import {
   Share,
   Switch,
   Keyboard,
+  Animated,
+  Pressable,
 } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -86,12 +101,18 @@ import {
   BookOpen,
   ExternalLink,
   ShoppingCart,
+  ShoppingBag,
   MoreVertical,
   Pencil,
   Share2,
   Home,
   Settings,
   Square,
+  Map as MapIcon,
+  Menu,
+  Tag,
+  SlidersHorizontal,
+  Mic,
 } from 'lucide-react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -100,6 +121,20 @@ const CALENDAR_MINUTE_HEIGHT = 1.05;
 const CALENDAR_TIMELINE_HEIGHT = 24 * 60 * CALENDAR_MINUTE_HEIGHT;
 const CALENDAR_HOUR_HEIGHT = 60 * CALENDAR_MINUTE_HEIGHT;
 const CALENDAR_WEEK_COLUMN_WIDTH = 120;
+
+// Available colors for idea tags
+const TAG_COLORS = [
+  '#6366f1', // indigo
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#ef4444', // red
+  '#f97316', // orange
+  '#eab308', // yellow
+  '#22c55e', // green
+  '#14b8a6', // teal
+  '#3b82f6', // blue
+  '#64748b', // slate
+];
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -129,7 +164,7 @@ export default function App() {
   const [isFaceIdAuthenticated, setIsFaceIdAuthenticated] = useState(true); // Default to true for initial access
 
   const [todoItemType, setTodoItemType] = useState('task'); // 'task' or 'activity'
-  const [activeTab, setActiveTab] = useState(tabSettings?.appLaunch?.defaultTab || 'today');
+  const [activeTab, setActiveTab] = useState('today'); // Default to 'today', updated by useEffect when settings load
   const [searchQuery, setSearchQuery] = useState('');
   const [restaurantViewMode, setRestaurantViewMode] = useState('list');
   const [restaurantEditMode, setRestaurantEditMode] = useState(false);
@@ -164,7 +199,10 @@ export default function App() {
   const [personalTasks, setPersonalTasks] = useState([]);
   const [personalActivities, setPersonalActivities] = useState([]);
   const [personalIdeas, setPersonalIdeas] = useState([]);
-  const [giftViewMode, setGiftViewMode] = useState('gifts'); // 'gifts' | 'personal'
+  const [giftViewMode, setGiftViewMode] = useState('others'); // 'others' | 'personal'
+  const [shopMode, setShopMode] = useState('grocery'); // 'grocery' | 'other'
+  const [personalWishlist, setPersonalWishlist] = useState([]); // User's personal wishlist
+  const [otherShopItems, setOtherShopItems] = useState([]); // Non-grocery shop items
   const [editingPerson, setEditingPerson] = useState(null);
   const [showBirthdayPicker, setShowBirthdayPicker] = useState(false);
   const [birthdayDate, setBirthdayDate] = useState(new Date());
@@ -177,6 +215,22 @@ export default function App() {
   const [ideaScope, setIdeaScope] = useState('personal'); // 'household' | 'personal'
   const [taskScope, setTaskScope] = useState('personal'); // 'household' | 'personal'
   const [activityScope, setActivityScope] = useState('personal'); // 'household' | 'personal'
+
+  // Idea tags state
+  const [ideaTags, setIdeaTags] = useState([]);
+  const [selectedTagFilters, setSelectedTagFilters] = useState([]);
+  const [ideaSortMode, setIdeaSortMode] = useState('recent'); // 'recent', 'oldest', 'grouped'
+  const [showTagManager, setShowTagManager] = useState(false);
+  const [editingTag, setEditingTag] = useState(null);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#6366f1');
+
+  // Voice recording state for ideas
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const voiceTranscriptRef = useRef('');
+  const shouldProcessVoiceRef = useRef(false);
 
   const [hasProfile, setHasProfile] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
@@ -315,6 +369,8 @@ export default function App() {
     price: '',
     reminderTime: '1 hour before',
     placeId: '',
+    locationReminder: true, // Default ON for new items with addresses
+    tagIds: [], // Tags for ideas
   });
 
   const [householdId, setHouseholdId] = useState(null);
@@ -420,7 +476,10 @@ export default function App() {
 
   useEffect(() => {
     const defaultTab = tabSettings?.appLaunch?.defaultTab || 'today';
-    if (tabOrder.includes(defaultTab) && tabVisibility[defaultTab] !== false) {
+    // 'today' is always visible, so handle it specially
+    if (defaultTab === 'today') {
+      setActiveTab('today');
+    } else if (tabOrder.includes(defaultTab) && tabVisibility[defaultTab] !== false) {
       setActiveTab(defaultTab);
     } else {
       setActiveTab('today');
@@ -767,6 +826,14 @@ export default function App() {
       setPersonalIdeas(personalIdeasData);
     });
 
+    // Listen to idea tags (user-specific)
+    const ideaTagsQuery = query(collection(db, 'users', currentUser.uid, 'ideaTags'));
+    const unsubscribeIdeaTags = onSnapshot(ideaTagsQuery, (snapshot) => {
+      if (!auth.currentUser) return;
+      const tagsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setIdeaTags(tagsData);
+    });
+
     let unsubscribeItems = null;
     let unsubscribeActivities = null;
     let unsubscribeRecipes = null;
@@ -861,6 +928,7 @@ export default function App() {
       unsubscribePersonalTasks();
       unsubscribePersonalActivities();
       unsubscribePersonalIdeas();
+      unsubscribeIdeaTags();
     };
   }, [householdId, user]);
 
@@ -886,7 +954,14 @@ export default function App() {
     const getUserLocation = async () => {
       try {
         // Request location permissions
-        const { status } = await Location.requestForegroundPermissionsAsync();
+        let status;
+        try {
+          const result = await Location.requestForegroundPermissionsAsync();
+          status = result.status;
+        } catch (permError) {
+          console.log('Location permission error (may need native rebuild):', permError.message);
+          return;
+        }
         if (status !== 'granted') {
           console.log('Location permission denied');
           return;
@@ -1056,9 +1131,11 @@ export default function App() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        // Force light theme for Editorial Home Journal design
-        setTheme('light');
-        await AsyncStorage.setItem('theme', 'light');
+        // Load saved theme preference (defaults to 'light')
+        const savedTheme = await AsyncStorage.getItem('@life_organizer_theme');
+        if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+          setTheme(savedTheme);
+        }
 
         const savedTabVisibility = await AsyncStorage.getItem('tabVisibility');
         if (savedTabVisibility) {
@@ -1111,6 +1188,14 @@ export default function App() {
                 ...DEFAULT_TAB_SETTINGS.map,
                 ...(parsedTabSettings?.map || {}),
               },
+              calendar: {
+                ...DEFAULT_TAB_SETTINGS.calendar,
+                ...(parsedTabSettings?.calendar || {}),
+              },
+              appLaunch: {
+                ...DEFAULT_TAB_SETTINGS.appLaunch,
+                ...(parsedTabSettings?.appLaunch || {}),
+              },
             };
             setTabSettings(mergedTabSettings);
           } catch (parseError) {
@@ -1154,6 +1239,18 @@ export default function App() {
       }
     };
     loadSettings();
+  }, []);
+
+  // Initialize location reminder service
+  useEffect(() => {
+    const initLocationReminders = async () => {
+      try {
+        await locationReminderService.initialize();
+      } catch (error) {
+        console.error('Error initializing location reminders:', error);
+      }
+    };
+    initLocationReminders();
   }, []);
 
   useEffect(() => {
@@ -1342,8 +1439,8 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Show loading while auth/profile loading
-  if (authLoading || checkingProfile) {
+  // Show loading while auth/profile/household loading
+  if (authLoading || checkingProfile || checkingHousehold) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.safeArea}>
@@ -1370,7 +1467,7 @@ export default function App() {
   if (!user) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <AuthScreen onAuthSuccess={() => setUser(auth.currentUser)} />
+        <AuthScreen onAuthSuccess={() => setUser(auth.currentUser)} theme={theme} />
       </GestureHandlerRootView>
     );
   }
@@ -1378,14 +1475,22 @@ export default function App() {
   if (!hasProfile && !checkingProfile) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <UserProfileSetup onComplete={() => setHasProfile(true)} />
+        <UserProfileSetup
+          theme={theme}
+          onComplete={() => {
+            setHasProfile(true);
+            // Ensure household check state is ready for new users
+            setCheckingHousehold(false);
+            setSkippedHousehold(false);
+          }}
+        />
       </GestureHandlerRootView>
     );
   }
   if (!householdId && !checkingHousehold && !showHouseholdSetup && !skippedHousehold) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <HouseholdSetup onHouseholdSet={(id) => {
+        <HouseholdSetup theme={theme} onHouseholdSet={(id) => {
       if (id) {
         setHouseholdId(id);
         const currentUser = auth.currentUser;
@@ -1407,7 +1512,7 @@ export default function App() {
   if (showHouseholdSetup) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <HouseholdSetup onHouseholdSet={(id) => {
+        <HouseholdSetup theme={theme} onHouseholdSet={(id) => {
       setShowHouseholdSetup(false);
       if (id) {
         setHouseholdId(id);
@@ -1482,7 +1587,17 @@ export default function App() {
         const docRef = await addDoc(collection(db, 'households', householdId, 'activities'), activityData);
         // Schedule notification
         await scheduleActivityNotification(docRef.id, activityData.title, activityData.date, activityData.time, activityData.reminderTime);
-        
+
+        // Add location reminder if enabled and has location
+        if (newItem.locationReminder && activityData.location) {
+          await locationReminderService.addGeofence({
+            id: docRef.id,
+            type: 'activity',
+            title: activityData.title,
+            location: activityData.location,
+          });
+        }
+
       } else if (addItemType === 'gifts') {
         if (!newItem.person.trim()) {
           Alert.alert('Error', 'Please enter a person\'s name');
@@ -1512,7 +1627,32 @@ export default function App() {
           createdAt: new Date().toISOString(),
         };
         await addDoc(collection(db, 'users', currentUser.uid, 'personalList'), personalData);
-        
+
+      } else if (addItemType === 'wishlist') {
+        // Personal wishlist item
+        const wishlistItem = {
+          id: Date.now().toString(),
+          title: newItem.title,
+          notes: newItem.notes || '',
+          price: newItem.price || '',
+          link: newItem.link || '',
+          purchased: false,
+          createdAt: new Date().toISOString(),
+        };
+        setPersonalWishlist(prev => [...prev, wishlistItem]);
+
+      } else if (addItemType === 'otherShop') {
+        // Other store shopping item
+        const otherItem = {
+          id: Date.now().toString(),
+          title: newItem.title,
+          store: newItem.notes || '', // Use notes field for store name
+          price: newItem.price ? parseFloat(newItem.price) : null,
+          completed: false,
+          createdAt: new Date().toISOString(),
+        };
+        setOtherShopItems(prev => [...prev, otherItem]);
+
       } else if (addItemType === 'todo') {
         // Check if creating task or activity
         if (todoItemType === 'activity') {
@@ -1554,6 +1694,15 @@ export default function App() {
             const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'personalActivities'), activityData);
             // Schedule notification
             await scheduleActivityNotification(docRef.id, activityData.title, activityData.date, activityData.time, activityData.reminderTime);
+            // Add location reminder if enabled and has location
+            if (newItem.locationReminder && activityData.location) {
+              await locationReminderService.addGeofence({
+                id: docRef.id,
+                type: 'activity',
+                title: activityData.title,
+                location: activityData.location,
+              });
+            }
           } else {
             if (!householdId) {
               Alert.alert('Error', 'You need to join or create a household to add household activities');
@@ -1563,6 +1712,15 @@ export default function App() {
             const docRef = await addDoc(collection(db, 'households', householdId, 'activities'), activityData);
             // Schedule notification
             await scheduleActivityNotification(docRef.id, activityData.title, activityData.date, activityData.time, activityData.reminderTime);
+            // Add location reminder if enabled and has location
+            if (newItem.locationReminder && activityData.location) {
+              await locationReminderService.addGeofence({
+                id: docRef.id,
+                type: 'activity',
+                title: activityData.title,
+                location: activityData.location,
+              });
+            }
           }
         } else {
           // Create as task
@@ -1591,7 +1749,16 @@ export default function App() {
 
           // Save to personal or household based on scope
           if (taskScope === 'personal') {
-            await addDoc(collection(db, 'users', currentUser.uid, 'personalTasks'), itemData);
+            const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'personalTasks'), itemData);
+            // Add location reminder if enabled and has location
+            if (newItem.locationReminder && itemData.location) {
+              await locationReminderService.addGeofence({
+                id: docRef.id,
+                type: 'task',
+                title: itemData.title,
+                location: itemData.location,
+              });
+            }
           } else {
             if (!householdId) {
               Alert.alert('Error', 'You need to join or create a household to add household tasks');
@@ -1599,7 +1766,16 @@ export default function App() {
               return;
             }
             itemData.order = items.length;
-            await addDoc(collection(db, 'households', householdId, 'items'), itemData);
+            const docRef = await addDoc(collection(db, 'households', householdId, 'items'), itemData);
+            // Add location reminder if enabled and has location
+            if (newItem.locationReminder && itemData.location) {
+              await locationReminderService.addGeofence({
+                id: docRef.id,
+                type: 'task',
+                title: itemData.title,
+                location: itemData.location,
+              });
+            }
           }
         }
       } else {
@@ -1611,6 +1787,7 @@ export default function App() {
             notes: newItem.notes,
             createdAt: new Date().toISOString(),
             completed: false,
+            tagIds: newItem.tagIds || [],
           };
           await addDoc(collection(db, 'users', currentUser.uid, 'personalIdeas'), personalIdeaData);
         } else {
@@ -1646,10 +1823,20 @@ export default function App() {
             setIsSubmitting(false);
             return;
           }
-          await addDoc(collection(db, 'households', householdId, 'items'), itemData);
+          const docRef = await addDoc(collection(db, 'households', householdId, 'items'), itemData);
+
+          // Add location reminder for restaurants if enabled and has location
+          if (category === 'restaurants' && newItem.locationReminder && itemData.location) {
+            await locationReminderService.addGeofence({
+              id: docRef.id,
+              type: 'restaurant',
+              title: itemData.title,
+              location: itemData.location,
+            });
+          }
         }
       }
-  
+
       setNewItem({
         title: '',
         notes: '',
@@ -1665,8 +1852,11 @@ export default function App() {
         budget: '',
         link: '',
         activityAddress: '',
+        priority: 'medium',
         price: '',
+        reminderTime: '1 hour before',
         placeId: '',
+        locationReminder: true,
       });
       setShowAddForm(false);
     } catch (error) {
@@ -1737,7 +1927,8 @@ export default function App() {
         occasion: '',
         budget: item.budget || '',
         link: item.link || '',
-        activityAddress: ''
+        activityAddress: '',
+        tagIds: [],
       });
       setAddItemType('gifts');
     } else if (type === 'personal') {
@@ -1755,7 +1946,8 @@ export default function App() {
         occasion: '',
         budget: item.budget || '',
         link: item.link || '',
-        activityAddress: ''
+        activityAddress: '',
+        tagIds: [],
       });
       setAddItemType('personal');
     } else if (type === 'personalTask') {
@@ -1821,6 +2013,7 @@ export default function App() {
         budget: '',
         link: '',
         activityAddress: '',
+        tagIds: item.tagIds || [],
       });
       setAddItemType('ideas');
       setIdeaScope('personal');
@@ -1844,6 +2037,7 @@ export default function App() {
         latitude: item.location?.latitude,
         longitude: item.location?.longitude,
         priority: item.priority || 'medium',
+        tagIds: item.tagIds || [],
       });
       
       // Check if this is a personal idea - check both isPersonal flag and if ID exists in personalIdeas
@@ -1912,7 +2106,8 @@ export default function App() {
           occasion: '',
           budget: '',
           link: '',
-          activityAddress: ''
+          activityAddress: '',
+          tagIds: [],
         });
         setShowAddForm(false);
         setIsEditMode(false);
@@ -1944,7 +2139,8 @@ export default function App() {
           occasion: '',
           budget: '',
           link: '',
-          activityAddress: ''
+          activityAddress: '',
+          tagIds: [],
         });
         setShowAddForm(false);
         setIsEditMode(false);
@@ -1957,6 +2153,7 @@ export default function App() {
         const ideaData = {
           title: newItem.title,
           notes: newItem.notes,
+          tagIds: newItem.tagIds || [],
         };
   
         await updateDoc(doc(db, 'users', currentUser.uid, 'personalIdeas', editingItem.id), ideaData);
@@ -1974,7 +2171,8 @@ export default function App() {
           occasion: '',
           budget: '',
           link: '',
-          activityAddress: ''
+          activityAddress: '',
+          tagIds: [],
         });
         setShowAddForm(false);
         setIsEditMode(false);
@@ -2018,7 +2216,8 @@ export default function App() {
           occasion: '',
           budget: '',
           link: '',
-          activityAddress: ''
+          activityAddress: '',
+          tagIds: [],
         });
         setShowAddForm(false);
         setIsEditMode(false);
@@ -2065,7 +2264,8 @@ export default function App() {
           occasion: '',
           budget: '',
           link: '',
-          activityAddress: ''
+          activityAddress: '',
+          tagIds: [],
         });
         setShowAddForm(false);
         setIsEditMode(false);
@@ -2210,6 +2410,20 @@ export default function App() {
     }
 
     try {
+      // Remove location reminder geofence if it exists
+      const typeMap = {
+        'activities': 'activity',
+        'personalActivities': 'activity',
+        'restaurants': 'restaurant',
+        'items': 'task', // default for items/tasks
+      };
+      const geofenceType = typeMap[category] || 'task';
+      try {
+        await locationReminderService.removeGeofence(id, geofenceType);
+      } catch (e) {
+        // Silently ignore if geofence doesn't exist
+      }
+
       // First check for personal ideas (can be called without category from ideas tab)
       const personalIdea = personalIdeas.find(i => i.id === id);
       if (personalIdea || category === 'ideas') {
@@ -2267,6 +2481,75 @@ export default function App() {
       console.error('Error deleting item:', error);
       Alert.alert('Error', 'Failed to delete item');
     }
+  };
+
+  // Tag management functions
+  const addIdeaTag = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !newTagName.trim()) return;
+    
+    try {
+      await addDoc(collection(db, 'users', currentUser.uid, 'ideaTags'), {
+        name: newTagName.trim(),
+        color: newTagColor,
+        createdAt: new Date().toISOString(),
+      });
+      setNewTagName('');
+      setNewTagColor('#6366f1');
+    } catch (error) {
+      console.error('Error adding tag:', error);
+      Alert.alert('Error', 'Failed to add tag');
+    }
+  };
+
+  const updateIdeaTag = async (tagId, updates) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid, 'ideaTags', tagId), updates);
+      setEditingTag(null);
+    } catch (error) {
+      console.error('Error updating tag:', error);
+      Alert.alert('Error', 'Failed to update tag');
+    }
+  };
+
+  const deleteIdeaTag = async (tagId) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    
+    Alert.alert(
+      'Delete Tag',
+      'Are you sure you want to delete this tag? It will be removed from all ideas.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Delete the tag
+              await deleteDoc(doc(db, 'users', currentUser.uid, 'ideaTags', tagId));
+              
+              // Remove tag from all personal ideas that have it
+              const ideasWithTag = personalIdeas.filter(idea => 
+                idea.tagIds && idea.tagIds.includes(tagId)
+              );
+              
+              for (const idea of ideasWithTag) {
+                await updateDoc(doc(db, 'users', currentUser.uid, 'personalIdeas', idea.id), {
+                  tagIds: idea.tagIds.filter(id => id !== tagId)
+                });
+              }
+            } catch (error) {
+              console.error('Error deleting tag:', error);
+              Alert.alert('Error', 'Failed to delete tag');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const toggleComplete = (id, category) => {
@@ -2366,8 +2649,8 @@ export default function App() {
           if (!householdId) return;
           const item = items.find(i => i.id === id);
           if (item) {
-            // Fire firework immediately if marking as complete
-            if (!item.completed) {
+            // Fire firework immediately if marking as complete (but not for groceries)
+            if (!item.completed && item.category !== 'groceries') {
               setShowFirework(true);
             }
             // Track lastCompleted for grocery items (for frequent items feature)
@@ -2401,8 +2684,8 @@ export default function App() {
         if (!householdId) return;
         const item = items.find(i => i.id === id);
         if (item) {
-        // Fire firework immediately if marking as complete
-        if (!item.completed) {
+        // Fire firework immediately if marking as complete (but not for groceries)
+        if (!item.completed && item.category !== 'groceries') {
           setShowFirework(true);
         }
         // Track lastCompleted for grocery items (for frequent items feature)
@@ -2815,19 +3098,55 @@ export default function App() {
       );
     }
     
-    // For ideas tab, apply filter and sort favorited to top
+    // For ideas tab, apply filter and sort
     if (activeTab === 'ideas') {
+      // Apply personal/household filter
       if (ideaFilter === 'household') {
         filtered = filtered.filter(item => !item.isPersonal);
       } else if (ideaFilter === 'personal') {
         filtered = filtered.filter(item => item.isPersonal);
       }
-      // Sort favorited ideas to the top
-      filtered = filtered.sort((a, b) => {
-        if (a.favorited && !b.favorited) return -1;
-        if (!a.favorited && b.favorited) return 1;
-        return 0;
-      });
+
+      // Apply tag filter (if any tags are selected, show ideas that have ANY of the selected tags)
+      if (selectedTagFilters.length > 0) {
+        filtered = filtered.filter(item => {
+          const itemTags = item.tagIds || [];
+          return selectedTagFilters.some(tagId => itemTags.includes(tagId));
+        });
+      }
+
+      // Apply sorting
+      if (ideaSortMode === 'recent') {
+        filtered = filtered.sort((a, b) => {
+          // Favorited first, then by createdAt descending
+          if (a.favorited && !b.favorited) return -1;
+          if (!a.favorited && b.favorited) return 1;
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
+      } else if (ideaSortMode === 'oldest') {
+        filtered = filtered.sort((a, b) => {
+          // Favorited first, then by createdAt ascending
+          if (a.favorited && !b.favorited) return -1;
+          if (!a.favorited && b.favorited) return 1;
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateA - dateB;
+        });
+      } else if (ideaSortMode === 'grouped') {
+        // Sort by first tag, then by createdAt
+        filtered = filtered.sort((a, b) => {
+          if (a.favorited && !b.favorited) return -1;
+          if (!a.favorited && b.favorited) return 1;
+          const tagA = (a.tagIds && a.tagIds[0]) || 'zzz'; // Items without tags go last
+          const tagB = (b.tagIds && b.tagIds[0]) || 'zzz';
+          if (tagA !== tagB) return tagA.localeCompare(tagB);
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
+      }
     }
   
     // For todo tab, apply filter
@@ -2922,7 +3241,8 @@ export default function App() {
     if (activeTab === 'all') type = 'ideas';
     if (activeTab === 'todo') type = 'todo';
     if (activeTab === 'calendar') type = 'activities';
-    if (activeTab === 'gifts') type = giftViewMode === 'personal' ? 'personal' : 'gifts';
+    if (activeTab === 'gifts') type = giftViewMode === 'personal' ? 'wishlist' : 'gifts';
+    if (activeTab === 'groceries') type = shopMode === 'other' ? 'otherShop' : 'groceries';
 
     const defaultPerson = type === 'gifts' && selectedPerson ? selectedPerson : '';
     
@@ -2962,6 +3282,163 @@ export default function App() {
     setShowAddressSuggestions(false);
     setAddressSuggestions([]);
     setShowAddForm(true);
+  };
+
+  // Voice recording functions for Ideas tab
+  // Event listener subscriptions stored for cleanup
+  const speechListenersRef = useRef([]);
+
+  const cleanupSpeechListeners = () => {
+    speechListenersRef.current.forEach(sub => {
+      if (sub && typeof sub.remove === 'function') {
+        sub.remove();
+      }
+    });
+    speechListenersRef.current = [];
+  };
+
+  const startVoiceRecording = async () => {
+    // Lazy load the speech recognition module
+    if (!ExpoSpeechRecognitionModule) {
+      try {
+        const speechModule = require('expo-speech-recognition');
+        if (speechModule?.ExpoSpeechRecognitionModule) {
+          ExpoSpeechRecognitionModule = speechModule.ExpoSpeechRecognitionModule;
+          speechRecognitionAvailable = true;
+        }
+      } catch (e) {
+        console.log('Failed to load speech recognition:', e.message);
+      }
+    }
+
+    if (!ExpoSpeechRecognitionModule) {
+      Alert.alert('Not Available', 'Speech recognition is not available on this device. Please make sure Siri & Dictation are enabled in Settings.');
+      return;
+    }
+
+    try {
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!result.granted) {
+        Alert.alert('Permission Required', 'Please grant microphone and speech recognition permissions to use voice input.');
+        return;
+      }
+
+      setIsVoiceRecording(true);
+      setVoiceTranscript('');
+      voiceTranscriptRef.current = '';
+      shouldProcessVoiceRef.current = true;
+
+      // Clean up any existing listeners
+      cleanupSpeechListeners();
+
+      // Set up event listeners using addListener
+      const resultSub = ExpoSpeechRecognitionModule.addListener('result', (event) => {
+        const transcript = event.results[0]?.transcript || '';
+        setVoiceTranscript(transcript);
+        voiceTranscriptRef.current = transcript;
+      });
+
+      const endSub = ExpoSpeechRecognitionModule.addListener('end', () => {
+        if (shouldProcessVoiceRef.current) {
+          shouldProcessVoiceRef.current = false;
+          pulseAnim.stopAnimation();
+          pulseAnim.setValue(1);
+          setIsVoiceRecording(false);
+
+          const finalTranscript = voiceTranscriptRef.current.trim();
+          if (finalTranscript) {
+            setNewItem({
+              title: finalTranscript,
+              notes: '',
+              address: '',
+              cuisine: '',
+              priceRange: '',
+              dueDate: '',
+              date: '',
+              time: '',
+              activityCategory: '',
+              person: '',
+              occasion: '',
+              budget: '',
+              activityAddress: '',
+              activityLatitude: null,
+              activityLongitude: null,
+              link: '',
+              priority: 'medium',
+              price: '',
+              reminderTime: '1 hour before',
+              placeId: '',
+              tagIds: [],
+            });
+            setIsEditMode(false);
+            setEditingItem(null);
+            setAddItemType('ideas');
+            setIdeaScope('personal');
+            setShowAddressSuggestions(false);
+            setAddressSuggestions([]);
+            setShowAddForm(true);
+          }
+          setVoiceTranscript('');
+          voiceTranscriptRef.current = '';
+          cleanupSpeechListeners();
+        }
+      });
+
+      const errorSub = ExpoSpeechRecognitionModule.addListener('error', (event) => {
+        console.error('Speech recognition error:', event.error);
+        pulseAnim.stopAnimation();
+        pulseAnim.setValue(1);
+        setIsVoiceRecording(false);
+        setVoiceTranscript('');
+        if (event.error !== 'no-speech') {
+          Alert.alert('Error', 'Speech recognition failed. Please try again.');
+        }
+        cleanupSpeechListeners();
+      });
+
+      speechListenersRef.current = [resultSub, endSub, errorSub];
+
+      // Start pulsing animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.3,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      ExpoSpeechRecognitionModule.start({
+        lang: 'en-US',
+        interimResults: true,
+        maxAlternatives: 1,
+      });
+    } catch (error) {
+      console.error('Error starting voice recording:', error);
+      Alert.alert('Error', 'Failed to start voice recording. Please try again.');
+      setIsVoiceRecording(false);
+      cleanupSpeechListeners();
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    if (ExpoSpeechRecognitionModule) {
+      try {
+        ExpoSpeechRecognitionModule.stop();
+      } catch (e) {
+        console.log('Error stopping speech recognition:', e);
+      }
+    }
+    pulseAnim.stopAnimation();
+    pulseAnim.setValue(1);
+    setIsVoiceRecording(false);
+    cleanupSpeechListeners();
   };
 
   const handleReorderItems = async (data) => {
@@ -3053,83 +3530,6 @@ export default function App() {
     // Use stored subcategory if exists, otherwise infer from title
     if (!item) return 'other';
     return item.subcategory || inferGrocerySubcategory(item.title);
-  };
-
-  // Get frequently purchased grocery items (recently completed)
-  const getFrequentGroceryItems = () => {
-    const now = Date.now();
-    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-
-    // Get completed grocery items from the last 30 days
-    const recentCompleted = items
-      .filter(item =>
-        item.category === 'groceries' &&
-        item.lastCompleted &&
-        new Date(item.lastCompleted).getTime() > thirtyDaysAgo
-      )
-      .sort((a, b) => {
-        const aTime = new Date(a.lastCompleted).getTime();
-        const bTime = new Date(b.lastCompleted).getTime();
-        return bTime - aTime;
-      });
-
-    // Deduplicate by title (case-insensitive)
-    const seen = new Set();
-    const uniqueItems = [];
-    for (const item of recentCompleted) {
-      if (!item.title) continue; // Skip items without titles
-      const normalizedTitle = item.title.toLowerCase().trim();
-      if (!seen.has(normalizedTitle)) {
-        seen.add(normalizedTitle);
-        uniqueItems.push({
-          title: item.title,
-          subcategory: getGrocerySubcategory(item),
-          price: item.price,
-        });
-      }
-      if (uniqueItems.length >= 8) break;
-    }
-
-    return uniqueItems;
-  };
-
-  // Quick-add a grocery item from frequent items
-  const handleQuickAddGrocery = async (itemTitle, subcategory, estimatedPrice) => {
-    const currentUser = auth.currentUser;
-    if (!currentUser || !householdId) return;
-
-    // Check if item already exists and is not completed
-    const existingItem = items.find(
-      i => i.category === 'groceries' &&
-           !i.completed &&
-           i.title.toLowerCase().trim() === itemTitle.toLowerCase().trim()
-    );
-    if (existingItem) {
-      Alert.alert('Already on list', `"${itemTitle}" is already on your grocery list.`);
-      return;
-    }
-
-    try {
-      const itemData = {
-        title: itemTitle,
-        category: 'groceries',
-        subcategory: subcategory,
-        notes: '',
-        completed: false,
-        createdAt: new Date().toISOString(),
-        order: items.filter(i => i.category === 'groceries').length,
-        createdBy: currentUser.uid,
-      };
-
-      if (estimatedPrice && typeof estimatedPrice === 'number') {
-        itemData.price = estimatedPrice;
-      }
-
-      await addDoc(collection(db, 'households', householdId, 'items'), itemData);
-    } catch (error) {
-      console.error('Error quick-adding grocery:', error);
-      Alert.alert('Error', 'Could not add item. Please try again.');
-    }
   };
 
   const handleReorderCategory = async (category, data) => {
@@ -4031,21 +4431,21 @@ export default function App() {
     const isCurrentMonth = today.getMonth() === month && today.getFullYear() === year;
     
     for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(<View key={`empty-${i}`} style={styles.calendarDayCompactEmpty} />);
+      days.push(<View key={`empty-${i}`} style={dynamicStyles.calendarDayCompactEmpty} />);
     }
-    
+
     for (let day = 1; day <= daysInMonth; day++) {
       const dayActivities = getActivitiesForDay(day);
       const isToday = isCurrentMonth && day === today.getDate();
       const isSelected = selectedDay === day;
-      
+
       days.push(
         <TouchableOpacity
           key={day}
-          style={[styles.calendarDayCompact, isToday && styles.calendarDayCompactToday, isSelected && styles.calendarDayCompactSelected]}
+          style={[dynamicStyles.calendarDayCompact, isToday && dynamicStyles.calendarDayCompactToday, isSelected && dynamicStyles.calendarDayCompactSelected]}
           onPress={() => handleSelectDay(day)}
         >
-          <Text style={[styles.calendarDayCompactText, isToday && styles.calendarDayCompactTextToday, isSelected && styles.calendarDayCompactTextSelected]}>
+          <Text style={[dynamicStyles.calendarDayCompactText, isToday && dynamicStyles.calendarDayCompactTextToday, isSelected && dynamicStyles.calendarDayCompactTextSelected]}>
             {day}
           </Text>
           {dayActivities.length > 0 && (
@@ -4785,8 +5185,8 @@ export default function App() {
 
   const renderTabButton = (tabKey) => {
     const isActive = activeTab === tabKey;
-    const iconColor = isActive ? '#b45309' : '#6b7280';
-    const labelStyle = [styles.bottomTabLabel, isActive && styles.bottomTabLabelActive];
+    const iconColor = isActive ? themeColors.accentPrimary : themeColors.textSecondary;
+    const labelStyle = [dynamicStyles.bottomTabLabel, isActive && { color: themeColors.accentPrimary, fontWeight: '600' }];
 
     switch (tabKey) {
       case 'today':
@@ -4921,8 +5321,12 @@ export default function App() {
   };
 
   const renderContent = () => {
-    // Today Tab - First tab
-    if (activeTab === 'today') {
+    // Ensure activeTab has a valid value - default to 'today' if not
+    const validTabs = ['today', 'todo', 'calendar', 'groceries', 'ideas', 'gifts', 'food', 'all'];
+    const currentTab = validTabs.includes(activeTab) ? activeTab : 'today';
+
+    // Today Tab - First tab (also default fallback)
+    if (currentTab === 'today') {
       const { activities, tasks } = getTodayItems();
       const todayDateStr = getTodayDateString();
       const showWeeklyForecast = tabSettings.today?.showWeeklyForecast;
@@ -4934,27 +5338,27 @@ export default function App() {
       };
       
       return (
-        <View style={styles.container}>
+        <View style={dynamicStyles.container}>
           <ScrollView style={dynamicStyles.content} showsVerticalScrollIndicator={false}>
             {/* Sub-header with Date and Greeting */}
-            <View style={styles.todaySubHeader}>
-              <Text style={styles.todayDate}>{getFormattedTodayDate()}</Text>
-              <Text style={styles.todayGreeting}>
-                {getGreeting()}, <Text style={styles.todayGreetingName}>{getUserFirstName()}</Text>
+            <View style={dynamicStyles.todaySubHeader}>
+              <Text style={dynamicStyles.todayDate}>{getFormattedTodayDate()}</Text>
+              <Text style={dynamicStyles.todayGreeting}>
+                {getGreeting()}, <Text style={dynamicStyles.todayGreetingName}>{getUserFirstName()}</Text>
               </Text>
             </View>
 
             {/* Weather Card - Editorial Style */}
-            <View style={styles.weatherCard}>
+            <View style={dynamicStyles.weatherCard}>
               {weatherLoading && (
-                <ActivityIndicator size="small" color="#b45309" style={{ position: 'absolute', top: 16, right: 16 }} />
+                <ActivityIndicator size="small" color={themeColors.accentPrimary} style={{ position: 'absolute', top: 16, right: 16 }} />
               )}
               {weatherData ? (
                 <>
                   {/* Location */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                    <MapPin size={14} color="#b45309" />
-                    <Text style={styles.weatherLocation}>{weatherData.name || 'Your Location'}</Text>
+                    <MapPin size={14} color={themeColors.accentPrimary} />
+                    <Text style={dynamicStyles.weatherLocation}>{weatherData.name || 'Your Location'}</Text>
                   </View>
 
                   {/* Main Weather Row */}
@@ -4962,30 +5366,30 @@ export default function App() {
                     {/* Left - Temperature */}
                     <View>
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                        <Text style={styles.weatherTemp}>{Math.round(weatherData.main.temp)}</Text>
-                        <Text style={styles.weatherTempUnit}>°F</Text>
+                        <Text style={dynamicStyles.weatherTemp}>{Math.round(weatherData.main.temp)}</Text>
+                        <Text style={dynamicStyles.weatherTempUnit}>°F</Text>
                       </View>
                     </View>
 
                     {/* Right - Icon and Condition */}
                     <View style={{ alignItems: 'flex-end' }}>
-                      <View style={styles.weatherIconCircle}>
-                        <Sun size={32} color="#b45309" />
+                      <View style={dynamicStyles.weatherIconCircle}>
+                        <Sun size={32} color={themeColors.accentPrimary} />
                       </View>
-                      <Text style={styles.weatherConditionItalic}>
+                      <Text style={dynamicStyles.weatherConditionItalic}>
                         {weatherData.weather[0]?.description ?
                           weatherData.weather[0].description.charAt(0).toUpperCase() + weatherData.weather[0].description.slice(1)
                           : 'Clear'}
                       </Text>
-                      <Text style={styles.weatherHighLow}>
+                      <Text style={dynamicStyles.weatherHighLow}>
                         High {Math.round(weatherData.main.temp_max)}° • Low {Math.round(weatherData.main.temp_min)}°
                       </Text>
                     </View>
                   </View>
 
                   {/* Weekly Forecast Toggle */}
-                  <View style={styles.weatherToggleRow}>
-                    <Text style={styles.weatherToggleLabel}>Show weekly forecast</Text>
+                  <View style={dynamicStyles.weatherToggleRow}>
+                    <Text style={dynamicStyles.weatherToggleLabel}>Show weekly forecast</Text>
                     <TouchableOpacity
                       style={[styles.weatherToggleSwitch, showWeeklyForecast && styles.weatherToggleSwitchActive]}
                       onPress={() => setTabSettings({
@@ -5006,36 +5410,36 @@ export default function App() {
                       contentContainerStyle={{ gap: 8 }}
                     >
                       {weeklyForecastDays.map((day, index) => (
-                        <View key={day.dt || index} style={styles.forecastDayCard}>
-                          <Text style={styles.forecastDayName}>{formatForecastDay(day.dt, index)}</Text>
-                          <Sun size={24} color="#b45309" style={{ marginVertical: 8 }} />
-                          <Text style={styles.forecastDayTemp}>{Math.round(day.temp?.max || 0)}°</Text>
+                        <View key={day.dt || index} style={dynamicStyles.forecastDayCard}>
+                          <Text style={dynamicStyles.forecastDayName}>{formatForecastDay(day.dt, index)}</Text>
+                          <Sun size={24} color={themeColors.accentPrimary} style={{ marginVertical: 8 }} />
+                          <Text style={dynamicStyles.forecastDayTemp}>{Math.round(day.temp?.max || 0)}°</Text>
                         </View>
                       ))}
                     </ScrollView>
                   )}
                 </>
               ) : !weatherLoading ? (
-                <View style={styles.todayWeatherEmpty}>
-                  <Cloud size={32} color="#9CA3AF" />
-                  <Text style={styles.todayWeatherEmptyText}>Weather data unavailable</Text>
-                  <Text style={styles.todayWeatherEmptySubtext}>Check your API key configuration</Text>
+                <View style={dynamicStyles.todayWeatherEmpty}>
+                  <Cloud size={32} color={themeColors.textMuted} />
+                  <Text style={dynamicStyles.todayWeatherEmptyText}>Weather data unavailable</Text>
+                  <Text style={dynamicStyles.todayWeatherEmptySubtext}>Check your API key configuration</Text>
                 </View>
               ) : null}
             </View>
 
             {/* Today's Activities Section */}
             <View style={{ marginBottom: 28 }}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Today's Schedule</Text>
-                <Text style={styles.sectionAction}>See All</Text>
+              <View style={dynamicStyles.sectionHeader}>
+                <Text style={dynamicStyles.sectionTitle}>Today's Schedule</Text>
+                <Text style={dynamicStyles.sectionAction}>See All</Text>
               </View>
               {activities.length > 0 ? (
                 activities.map((activity, idx) => {
                   // Determine dot color based on category or type
                   const dotColor = activity.isBirthday ? '#ec4899' :
                                    activity.isAppleCalendar ? '#3b82f6' :
-                                   activity.isPersonal ? '#f59e0b' : '#3b82f6';
+                                   activity.isPersonal ? themeColors.accentPrimary : '#3b82f6';
                   return (
                     <TouchableOpacity
                       key={activity.id || idx}
@@ -5046,39 +5450,39 @@ export default function App() {
                       }}
                       disabled={activity.isBirthday || activity.isAppleCalendar}
                     >
-                      <View style={styles.activityCard}>
-                        <View style={styles.activityTimeBadge}>
+                      <View style={dynamicStyles.activityCard}>
+                        <View style={dynamicStyles.activityTimeBadge}>
                           {activity.time && (
                             <>
-                              <Text style={styles.activityTime}>{formatTime(activity.time).split(' ')[0]}</Text>
-                              <Text style={styles.activityPeriod}>{formatTime(activity.time).split(' ')[1]}</Text>
+                              <Text style={dynamicStyles.activityTime}>{formatTime(activity.time).split(' ')[0]}</Text>
+                              <Text style={dynamicStyles.activityPeriod}>{formatTime(activity.time).split(' ')[1]}</Text>
                             </>
                           )}
                         </View>
-                        <View style={styles.activityDivider} />
-                        <View style={styles.activityInfo}>
-                          <Text style={styles.activityTitle}>{activity.title}</Text>
+                        <View style={dynamicStyles.activityDivider} />
+                        <View style={dynamicStyles.activityInfo}>
+                          <Text style={dynamicStyles.activityTitle}>{activity.title}</Text>
                           {activity.notes && !activity.isAppleCalendar && (
-                            <Text style={styles.activityLocation} numberOfLines={1}>{activity.notes}</Text>
+                            <Text style={dynamicStyles.activityLocation} numberOfLines={1}>{activity.notes}</Text>
                           )}
                         </View>
-                        <View style={[styles.activityDot, { backgroundColor: dotColor }]} />
+                        <View style={[dynamicStyles.activityDot, { backgroundColor: dotColor }]} />
                       </View>
                     </TouchableOpacity>
                   );
                 })
               ) : (
-                <View style={styles.todayEmptyState}>
-                  <Text style={styles.todayEmptyText}>No activities scheduled for today</Text>
+                <View style={dynamicStyles.todayEmptyState}>
+                  <Text style={dynamicStyles.todayEmptyText}>No activities scheduled for today</Text>
                 </View>
               )}
             </View>
 
             {/* Today's Tasks Section */}
             <View style={{ marginBottom: 28 }}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Tasks Due Today</Text>
-                <Text style={styles.sectionAction}>See All</Text>
+              <View style={dynamicStyles.sectionHeader}>
+                <Text style={dynamicStyles.sectionTitle}>Tasks Due Today</Text>
+                <Text style={dynamicStyles.sectionAction}>See All</Text>
               </View>
               {tasks.length > 0 ? (
                 tasks.map((task, idx) => {
@@ -5089,26 +5493,26 @@ export default function App() {
                       key={task.id}
                       onPress={() => openEditForm(task, editType)}
                     >
-                      <View style={styles.activityCard}>
-                        <View style={styles.activityTimeBadge}>
+                      <View style={dynamicStyles.activityCard}>
+                        <View style={dynamicStyles.activityTimeBadge}>
                           <TouchableOpacity
                             onPress={(e) => {
                               e.stopPropagation();
                               toggleComplete(task.id, isPersonal ? 'personal' : 'items');
                             }}
                           >
-                            <View style={[styles.checkbox, task.completed && styles.checkboxCompleted]}>
+                            <View style={[dynamicStyles.checkbox, task.completed && dynamicStyles.checkboxCompleted]}>
                               {task.completed && <Check size={16} color="#fff" />}
                             </View>
                           </TouchableOpacity>
                         </View>
-                        <View style={styles.activityDivider} />
-                        <View style={styles.activityInfo}>
-                          <Text style={[styles.activityTitle, task.completed && styles.completedText]}>
+                        <View style={dynamicStyles.activityDivider} />
+                        <View style={dynamicStyles.activityInfo}>
+                          <Text style={[dynamicStyles.activityTitle, task.completed && dynamicStyles.completedText]}>
                             {task.title}
                           </Text>
                           {task.priority && (
-                            <Text style={styles.activityLocation}>
+                            <Text style={dynamicStyles.activityLocation}>
                               Priority: {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                             </Text>
                           )}
@@ -5118,8 +5522,8 @@ export default function App() {
                   );
                 })
               ) : (
-                <View style={styles.todayEmptyState}>
-                  <Text style={styles.todayEmptyText}>No tasks due today</Text>
+                <View style={dynamicStyles.todayEmptyState}>
+                  <Text style={dynamicStyles.todayEmptyText}>No tasks due today</Text>
                 </View>
               )}
             </View>
@@ -5128,7 +5532,7 @@ export default function App() {
       );
     }
 
-    if (activeTab === 'todo') {
+    if (currentTab === 'todo') {
       const { overdue, today, upcoming, current, allCurrent, noDate } = getFilteredTodoItems();
 
       const renderTaskCard = (task, isPersonal) => {
@@ -5158,48 +5562,106 @@ export default function App() {
                              task.priority === 'low' ? styles.priorityDotLow :
                              styles.priorityDotMedium;
 
-        return (
-          <TouchableOpacity
-            key={task.id}
-            onPress={() => {
-              if (todoFilter === 'activities') {
-                // Show activity detail popup
-                setSelectedActivity(task);
-              } else {
-                const editType = isPersonal ? 'personalTask' : 'item';
-                openEditForm(task, editType);
-              }
-            }}
-          >
-            <View style={styles.taskCard}>
-              <TouchableOpacity
-                onPress={(e) => {
-                  e.stopPropagation();
-                  const collection = todoFilter === 'activities'
+        const handleDeleteTask = () => {
+          Alert.alert(
+            'Delete Item',
+            `Are you sure you want to delete "${task.title}"?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: () => {
+                  const category = todoFilter === 'activities'
                     ? (isPersonal ? 'personalActivities' : 'activities')
-                    : (isPersonal ? 'personal' : 'items');
-                  toggleComplete(task.id, collection);
-                }}
-              >
-                <View style={[styles.taskCheckbox, task.completed && styles.taskCheckboxChecked]}>
-                  {task.completed && <Check size={14} color="#fff" />}
-                </View>
-              </TouchableOpacity>
+                    : 'items';
+                  deleteItem(task.id, category);
+                },
+              },
+            ]
+          );
+        };
 
-              <View style={styles.taskInfo}>
-                <Text style={[styles.taskTitle, task.completed && styles.completedText]}>
-                  {task.title}
-                </Text>
-                {dateDisplay && (
-                  <Text style={styles.taskMeta}>{dateDisplay}</Text>
+        const renderRightActions = (progress, dragX) => {
+          const scale = dragX.interpolate({
+            inputRange: [-100, 0],
+            outputRange: [1, 0.5],
+            extrapolate: 'clamp',
+          });
+          const opacity = dragX.interpolate({
+            inputRange: [-100, -50, 0],
+            outputRange: [1, 0.8, 0],
+            extrapolate: 'clamp',
+          });
+
+          return (
+            <TouchableOpacity
+              onPress={handleDeleteTask}
+              activeOpacity={0.8}
+            >
+              <Animated.View
+                style={[
+                  dynamicStyles.swipeDeleteAction,
+                  { opacity, transform: [{ scale }] },
+                ]}
+              >
+                <Trash2 size={22} color="#fff" />
+              </Animated.View>
+            </TouchableOpacity>
+          );
+        };
+
+        return (
+          <Swipeable
+            key={task.id}
+            renderRightActions={renderRightActions}
+            rightThreshold={40}
+            overshootRight={false}
+            friction={2}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                if (todoFilter === 'activities') {
+                  // Show activity detail popup
+                  setSelectedActivity(task);
+                } else {
+                  const editType = isPersonal ? 'personalTask' : 'item';
+                  openEditForm(task, editType);
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={dynamicStyles.taskCard}>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    const collection = todoFilter === 'activities'
+                      ? 'activities'
+                      : 'items';
+                    toggleComplete(task.id, collection);
+                  }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <View style={[dynamicStyles.checkbox, { marginRight: 14 }, task.completed && dynamicStyles.checkboxCompleted]}>
+                    {task.completed && <Check size={14} color="#fff" />}
+                  </View>
+                </TouchableOpacity>
+
+                <View style={dynamicStyles.taskInfo}>
+                  <Text style={[dynamicStyles.taskTitle, task.completed && dynamicStyles.completedText]}>
+                    {task.title}
+                  </Text>
+                  {dateDisplay && (
+                    <Text style={dynamicStyles.taskMeta}>{dateDisplay}</Text>
+                  )}
+                </View>
+
+                {!task.completed && todoFilter === 'tasks' && (
+                  <View style={[styles.priorityDot, priorityStyle]} />
                 )}
               </View>
-
-              {!task.completed && todoFilter === 'tasks' && (
-                <View style={[styles.priorityDot, priorityStyle]} />
-              )}
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </Swipeable>
         );
       };
 
@@ -5208,8 +5670,8 @@ export default function App() {
 
         return (
           <>
-            <View style={styles.todoSectionHeader}>
-              <Text style={styles.todoSectionTitle}>
+            <View style={dynamicStyles.todoSectionHeader}>
+              <Text style={dynamicStyles.todoSectionTitle}>
                 {title} {count !== undefined && `(${count})`}
               </Text>
             </View>
@@ -5219,88 +5681,92 @@ export default function App() {
       };
 
       return (
-        <View style={styles.container}>
-          <View style={styles.todoSubHeader}>
-            <Text style={styles.todoMainTitle}>
-              Your <Text style={styles.todoMainTitleAccent}>To Do</Text>
+        <View style={dynamicStyles.container}>
+          <View style={dynamicStyles.todoSubHeader}>
+            <Text style={dynamicStyles.todoMainTitle}>
+              Your <Text style={dynamicStyles.todoMainTitleAccent}>To Do</Text>
             </Text>
           </View>
 
-          <View style={styles.todoToggleRow}>
-            <View style={styles.todoToggle}>
+          <View style={dynamicStyles.todoToggleRow}>
+            <View style={dynamicStyles.todoToggle}>
               <TouchableOpacity
-                style={[styles.todoToggleItem, todoFilter === 'tasks' && styles.todoToggleItemActive]}
+                style={[dynamicStyles.todoToggleItem, todoFilter === 'tasks' && dynamicStyles.todoToggleItemActive]}
                 onPress={() => setTodoFilter('tasks')}
               >
-                <Text style={[styles.todoToggleText, todoFilter === 'tasks' && styles.todoToggleTextActive]}>
+                <Text style={[dynamicStyles.todoToggleText, todoFilter === 'tasks' && dynamicStyles.todoToggleTextActive]}>
                   TASKS
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.todoToggleItem, todoFilter === 'activities' && styles.todoToggleItemActive]}
+                style={[dynamicStyles.todoToggleItem, todoFilter === 'activities' && dynamicStyles.todoToggleItemActive]}
                 onPress={() => setTodoFilter('activities')}
               >
-                <Text style={[styles.todoToggleText, todoFilter === 'activities' && styles.todoToggleTextActive]}>
+                <Text style={[dynamicStyles.todoToggleText, todoFilter === 'activities' && dynamicStyles.todoToggleTextActive]}>
                   ACTIVITIES
                 </Text>
               </TouchableOpacity>
             </View>
             {todoFilter === 'activities' && (
-              <View style={styles.mapToggleContainer}>
-                <MapPin size={16} color={todoViewMode === 'map' ? '#b45309' : '#9CA3AF'} />
+              <View style={dynamicStyles.mapToggleContainer}>
+                <MapPin size={16} color={todoViewMode === 'map' ? themeColors.accentPrimary : themeColors.textMuted} />
                 <Switch
                   value={todoViewMode === 'map'}
                   onValueChange={(value) => setTodoViewMode(value ? 'map' : 'list')}
-                  trackColor={{ false: '#e5e7eb', true: '#fcd9b8' }}
-                  thumbColor={todoViewMode === 'map' ? '#b45309' : '#f4f3f4'}
-                  ios_backgroundColor="#e5e7eb"
+                  trackColor={{ false: themeColors.border, true: theme === 'dark' ? 'rgba(245, 158, 11, 0.4)' : '#fcd9b8' }}
+                  thumbColor={todoViewMode === 'map' ? themeColors.accentPrimary : themeColors.surface}
+                  ios_backgroundColor={themeColors.border}
                   style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                 />
               </View>
             )}
           </View>
 
-          <View style={styles.filterPills}>
+          <View style={dynamicStyles.filterPills}>
             <TouchableOpacity
-              style={[styles.filterPill, todoTimeFilter === 'all' && styles.filterPillActive]}
+              style={[dynamicStyles.filterPill, todoTimeFilter === 'all' && dynamicStyles.filterPillActive]}
               onPress={() => setTodoTimeFilter('all')}
             >
-              <Text style={[styles.filterPillText, todoTimeFilter === 'all' && styles.filterPillTextActive]}>
+              <Text style={[dynamicStyles.filterPillText, todoTimeFilter === 'all' && dynamicStyles.filterPillTextActive]}>
                 All
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterPill, todoTimeFilter === 'today' && styles.filterPillActive]}
+              style={[dynamicStyles.filterPill, todoTimeFilter === 'today' && dynamicStyles.filterPillActive]}
               onPress={() => setTodoTimeFilter('today')}
             >
-              <Text style={[styles.filterPillText, todoTimeFilter === 'today' && styles.filterPillTextActive]}>
+              <Text style={[dynamicStyles.filterPillText, todoTimeFilter === 'today' && dynamicStyles.filterPillTextActive]}>
                 Today
               </Text>
             </TouchableOpacity>
+            {todoFilter === 'activities' && (
+              <TouchableOpacity
+                style={[dynamicStyles.filterPill, todoTimeFilter === 'current' && dynamicStyles.filterPillActive]}
+                onPress={() => setTodoTimeFilter('current')}
+              >
+                <Text style={[dynamicStyles.filterPillText, todoTimeFilter === 'current' && dynamicStyles.filterPillTextActive]}>
+                  Current
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={[styles.filterPill, todoTimeFilter === 'current' && styles.filterPillActive]}
-              onPress={() => setTodoTimeFilter('current')}
-            >
-              <Text style={[styles.filterPillText, todoTimeFilter === 'current' && styles.filterPillTextActive]}>
-                Current
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterPill, todoTimeFilter === 'upcoming' && styles.filterPillActive]}
+              style={[dynamicStyles.filterPill, todoTimeFilter === 'upcoming' && dynamicStyles.filterPillActive]}
               onPress={() => setTodoTimeFilter('upcoming')}
             >
-              <Text style={[styles.filterPillText, todoTimeFilter === 'upcoming' && styles.filterPillTextActive]}>
+              <Text style={[dynamicStyles.filterPillText, todoTimeFilter === 'upcoming' && dynamicStyles.filterPillTextActive]}>
                 Upcoming
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterPill, todoTimeFilter === 'overdue' && styles.filterPillActive]}
-              onPress={() => setTodoTimeFilter('overdue')}
-            >
-              <Text style={[styles.filterPillText, todoTimeFilter === 'overdue' && styles.filterPillTextActive]}>
-                Overdue
-              </Text>
-            </TouchableOpacity>
+            {todoFilter === 'tasks' && (
+              <TouchableOpacity
+                style={[dynamicStyles.filterPill, todoTimeFilter === 'overdue' && dynamicStyles.filterPillActive]}
+                onPress={() => setTodoTimeFilter('overdue')}
+              >
+                <Text style={[dynamicStyles.filterPillText, todoTimeFilter === 'overdue' && dynamicStyles.filterPillTextActive]}>
+                  Overdue
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {todoFilter === 'activities' && todoViewMode === 'map' ? (
@@ -5432,7 +5898,7 @@ export default function App() {
         </View>
       );
     }
-    if (activeTab === 'gifts') {
+    if (currentTab === 'gifts') {
       // Avatar colors for people
       const avatarColors = ['#c084fc', '#4ade80', '#60a5fa', '#f97316', '#ec4899', '#facc15'];
       const getAvatarColor = (name) => {
@@ -5458,13 +5924,13 @@ export default function App() {
       const renderGiftItem = (gift) => (
         <TouchableOpacity
           key={gift.id}
-          style={styles.newGiftItem}
+          style={dynamicStyles.newGiftItem}
           onPress={() => openEditForm(gift, 'gift')}
         >
-          <Gift size={16} color="#d1d5db" />
-          <Text style={styles.newGiftItemText}>{gift.idea}</Text>
+          <Gift size={16} color={themeColors.textMuted} />
+          <Text style={dynamicStyles.newGiftItemText}>{gift.idea}</Text>
           {gift.budget && (
-            <Text style={styles.newGiftItemPrice}>${gift.budget}</Text>
+            <Text style={dynamicStyles.newGiftItemPrice}>${gift.budget}</Text>
           )}
         </TouchableOpacity>
       );
@@ -5484,16 +5950,16 @@ export default function App() {
         return (
           <TouchableOpacity
             key={person.name}
-            style={styles.newPersonCard}
+            style={dynamicStyles.newPersonCard}
             onPress={() => openPersonProfile(person)}
           >
-            <View style={styles.newPersonCardHeader}>
+            <View style={dynamicStyles.newPersonCardHeader}>
               <View style={[styles.newPersonAvatar, { backgroundColor: avatarColor }]}>
-                <Text style={styles.newPersonAvatarText}>{person.name[0]}</Text>
+                <Text style={dynamicStyles.newPersonAvatarText}>{person.name[0]}</Text>
               </View>
-              <View style={styles.newPersonInfo}>
-                <Text style={styles.newPersonName}>{person.name}</Text>
-                <Text style={styles.newPersonOccasion}>{occasion}</Text>
+              <View style={dynamicStyles.newPersonInfo}>
+                <Text style={dynamicStyles.newPersonName}>{person.name}</Text>
+                <Text style={dynamicStyles.newPersonOccasion}>{occasion}</Text>
               </View>
               {dateDisplay && (
                 <View style={[styles.newPersonDateBadge, occasion === 'Birthday' ? styles.birthdayBadge : styles.christmasBadge]}>
@@ -5505,7 +5971,7 @@ export default function App() {
             </View>
             {personGifts.length > 0 && (
               <>
-                <Text style={styles.newGiftIdeasLabel}>GIFT IDEAS</Text>
+                <Text style={dynamicStyles.newGiftIdeasLabel}>GIFT IDEAS</Text>
                 {personGifts.slice(0, 3).map(gift => renderGiftItem(gift))}
               </>
             )}
@@ -5513,35 +5979,112 @@ export default function App() {
         );
       };
 
+      // Render personal wishlist item
+      const renderWishlistItem = (item) => (
+        <Swipeable
+          key={item.id}
+          renderRightActions={() => (
+            <View style={styles.swipeActionContainer}>
+              <View style={styles.swipeDeleteButton}>
+                <Trash2 size={24} color="#fff" />
+                <Text style={styles.swipeDeleteText}>Delete</Text>
+              </View>
+            </View>
+          )}
+          onSwipeableRightOpen={() => {
+            setPersonalWishlist(prev => prev.filter(i => i.id !== item.id));
+          }}
+          rightThreshold={80}
+          overshootRight={false}
+        >
+          <TouchableOpacity
+            onPress={() => openEditForm(item, 'wishlist')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.wishlistItem, item.purchased && styles.wishlistItemPurchased]}>
+              <TouchableOpacity onPress={(e) => {
+                e.stopPropagation();
+                setPersonalWishlist(prev => prev.map(i =>
+                  i.id === item.id ? { ...i, purchased: !i.purchased } : i
+                ));
+              }}>
+                <View style={[styles.groceryCheckbox, item.purchased && styles.groceryCheckboxChecked]}>
+                  {item.purchased && <Check size={16} color="#fff" />}
+                </View>
+              </TouchableOpacity>
+              <View style={styles.wishlistItemInfo}>
+                <Text style={[styles.wishlistItemTitle, item.purchased && styles.completedText]}>
+                  {item.title}
+                </Text>
+                {item.notes && (
+                  <Text style={[styles.wishlistItemNotes, item.purchased && styles.completedText]} numberOfLines={1}>
+                    {item.notes}
+                  </Text>
+                )}
+              </View>
+              {item.price && (
+                <Text style={[styles.wishlistItemPrice, item.purchased && styles.completedText]}>
+                  ${parseFloat(item.price).toFixed(2)}
+                </Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        </Swipeable>
+      );
+
       return (
-        <View style={styles.container}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={dynamicStyles.container}>
           {/* Subheader */}
-          <View style={styles.giftSubHeader}>
-            <Text style={styles.giftMainTitle}>
-              Gift <Text style={styles.giftMainTitleAccent}>Ideas</Text>
+          <View style={dynamicStyles.giftSubHeader}>
+            <Text style={dynamicStyles.giftMainTitle}>
+              Gift <Text style={dynamicStyles.giftMainTitleAccent}>Ideas</Text>
             </Text>
           </View>
 
-          {/* Filter Pills */}
-          <View style={styles.giftFilterPills}>
-            <View style={styles.giftFilterPill}>
-              <Text style={styles.giftFilterPillText}>{allPeople.length} People</Text>
-            </View>
-            <View style={styles.giftFilterPill}>
-              <Text style={styles.giftFilterPillText}>{upcomingCount} Upcoming</Text>
-            </View>
+          {/* Toggle Buttons */}
+          <View style={dynamicStyles.giftFilterPills}>
+            <TouchableOpacity
+              style={[dynamicStyles.filterPill, giftViewMode === 'others' && dynamicStyles.filterPillActive]}
+              onPress={() => setGiftViewMode('others')}
+            >
+              <Text style={[dynamicStyles.filterPillText, giftViewMode === 'others' && dynamicStyles.filterPillTextActive]}>Others</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[dynamicStyles.filterPill, giftViewMode === 'personal' && dynamicStyles.filterPillActive]}
+              onPress={() => setGiftViewMode('personal')}
+            >
+              <Text style={[dynamicStyles.filterPillText, giftViewMode === 'personal' && dynamicStyles.filterPillTextActive]}>Personal</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* People List */}
-          <ScrollView style={styles.giftPeopleScroll} showsVerticalScrollIndicator={false}>
-            {allPeople.map(person => renderPersonCard(person))}
-            <View style={{ height: 100 }} />
-          </ScrollView>
+          {giftViewMode === 'others' ? (
+            /* Others - Gift ideas for other people */
+            <ScrollView style={dynamicStyles.giftPeopleScroll} showsVerticalScrollIndicator={false}>
+              {allPeople.map(person => renderPersonCard(person))}
+              <View style={{ height: 100 }} />
+            </ScrollView>
+          ) : (
+            /* Personal - User's own wishlist */
+            <ScrollView style={dynamicStyles.giftPeopleScroll} showsVerticalScrollIndicator={false}>
+              {personalWishlist.length === 0 ? (
+                <View style={dynamicStyles.emptyState}>
+                  <Gift size={48} color={themeColors.textMuted} />
+                  <Text style={dynamicStyles.emptyStateText}>Your Wishlist</Text>
+                  <Text style={dynamicStyles.emptyStateSubtext}>Add items you want for yourself</Text>
+                </View>
+              ) : (
+                personalWishlist.map(item => renderWishlistItem(item))
+              )}
+              <View style={{ height: 100 }} />
+            </ScrollView>
+          )}
         </View>
+        </GestureHandlerRootView>
       );
     }
 
-    if (activeTab === 'calendar') {
+    if (currentTab === 'calendar') {
       // Get all upcoming events sorted by date
       const getEventsForSelectedDate = () => {
         const allEvents = [...activities, ...personalActivities];
@@ -5608,10 +6151,10 @@ export default function App() {
 
         // Add day name headers
         const headerRow = (
-          <View key="header" style={styles.calGridRow}>
+          <View key="header" style={dynamicStyles.calGridRow}>
             {dayNames.map(day => (
-              <View key={day} style={styles.calGridCell}>
-                <Text style={styles.calGridDayName}>{day}</Text>
+              <View key={day} style={dynamicStyles.calGridCell}>
+                <Text style={dynamicStyles.calGridDayName}>{day}</Text>
               </View>
             ))}
           </View>
@@ -5657,7 +6200,7 @@ export default function App() {
             weekDays.push(
               <TouchableOpacity
                 key={`${week}-${dayOfWeek}`}
-                style={styles.calGridCell}
+                style={dynamicStyles.calGridCell}
                 onPress={() => {
                   if (isCurrentMonthDay) {
                     const newDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), dayNumber);
@@ -5666,21 +6209,21 @@ export default function App() {
                 }}
               >
                 <View style={[
-                  styles.calGridDayWrapper,
-                  isToday && !isSelected && styles.calGridDayTodayOutline,
-                  isSelected && styles.calGridDaySelected
+                  dynamicStyles.calGridDayWrapper,
+                  isToday && !isSelected && dynamicStyles.calGridDayTodayOutline,
+                  isSelected && dynamicStyles.calGridDaySelected
                 ]}>
                   <Text style={[
-                    styles.calGridDayNumber,
-                    !isCurrentMonthDay && styles.calGridDayNumberMuted,
-                    (isToday && !isSelected) && styles.calGridDayNumberToday,
-                    isSelected && styles.calGridDayNumberSelected
+                    dynamicStyles.calGridDayNumber,
+                    !isCurrentMonthDay && dynamicStyles.calGridDayNumberMuted,
+                    (isToday && !isSelected) && dynamicStyles.calGridDayNumberToday,
+                    isSelected && dynamicStyles.calGridDayNumberSelected
                   ]}>
                     {dayNumber}
                   </Text>
                 </View>
                 {hasEvents && (
-                  <View style={styles.calGridDotRow}>
+                  <View style={dynamicStyles.calGridDotRow}>
                     {eventsOnDay.slice(0, 3).map((event, idx) => (
                       <View
                         key={idx}
@@ -5693,7 +6236,7 @@ export default function App() {
             );
           }
           days.push(
-            <View key={`week-${week}`} style={styles.calGridRow}>
+            <View key={`week-${week}`} style={dynamicStyles.calGridRow}>
               {weekDays}
             </View>
           );
@@ -5714,17 +6257,17 @@ export default function App() {
         return (
           <TouchableOpacity
             key={event.id}
-            style={styles.calEventCard}
+            style={dynamicStyles.calEventCard}
             onPress={() => handleEventPress(event)}
             disabled={event.isBirthday || event.isAppleCalendar}
           >
-            <View style={styles.calEventDateBox}>
-              <Text style={styles.calEventDateNum}>{dayNum}</Text>
-              <Text style={styles.calEventDateMonth}>{monthShort}</Text>
+            <View style={dynamicStyles.calEventDateBox}>
+              <Text style={dynamicStyles.calEventDateNum}>{dayNum}</Text>
+              <Text style={dynamicStyles.calEventDateMonth}>{monthShort}</Text>
             </View>
-            <View style={styles.calEventInfo}>
-              <Text style={styles.calEventTitle}>{event.title}</Text>
-              <Text style={styles.calEventMeta}>
+            <View style={dynamicStyles.calEventInfo}>
+              <Text style={dynamicStyles.calEventTitle}>{event.title}</Text>
+              <Text style={dynamicStyles.calEventMeta}>
                 {timeDisplay}{locationDisplay ? ` - ${locationDisplay}` : ''}
               </Text>
             </View>
@@ -5736,38 +6279,38 @@ export default function App() {
       const monthLabel = selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
       return (
-        <View style={styles.container}>
+        <View style={dynamicStyles.container}>
           {/* Subheader */}
-          <View style={styles.calSubHeader}>
-            <Text style={styles.calMainTitle}>
-              Your <Text style={styles.calMainTitleAccent}>Calendar</Text>
+          <View style={dynamicStyles.calSubHeader}>
+            <Text style={dynamicStyles.calMainTitle}>
+              Your <Text style={dynamicStyles.calMainTitleAccent}>Calendar</Text>
             </Text>
           </View>
 
           {/* Month Navigation */}
-          <View style={styles.calMonthNav}>
-            <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.calNavButton}>
-              <ChevronLeft size={20} color="#1f2933" />
+          <View style={dynamicStyles.calMonthNav}>
+            <TouchableOpacity onPress={() => changeMonth(-1)} style={dynamicStyles.calNavButton}>
+              <ChevronLeft size={20} color={themeColors.text} />
             </TouchableOpacity>
-            <Text style={styles.calMonthLabel}>{monthLabel}</Text>
-            <TouchableOpacity onPress={() => changeMonth(1)} style={styles.calNavButton}>
-              <ChevronRight size={20} color="#1f2933" />
+            <Text style={dynamicStyles.calMonthLabel}>{monthLabel}</Text>
+            <TouchableOpacity onPress={() => changeMonth(1)} style={dynamicStyles.calNavButton}>
+              <ChevronRight size={20} color={themeColors.text} />
             </TouchableOpacity>
           </View>
 
           {/* Calendar Grid */}
-          <View style={styles.calGridContainer}>
+          <View style={dynamicStyles.calGridContainer}>
             {renderCalendarGrid()}
           </View>
 
           {/* Events for Selected Date */}
-          <Text style={styles.calUpcomingTitle}>
+          <Text style={dynamicStyles.calUpcomingTitle}>
             {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
-          <ScrollView style={styles.calEventsScroll} showsVerticalScrollIndicator={false}>
+          <ScrollView style={dynamicStyles.calEventsScroll} showsVerticalScrollIndicator={false}>
             {selectedDateEvents.length === 0 ? (
               <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                <Text style={{ color: '#9ca3af', fontSize: 14 }}>No events on this day</Text>
+                <Text style={{ color: themeColors.textMuted, fontSize: 14 }}>No events on this day</Text>
               </View>
             ) : (
               selectedDateEvents.map(event => renderEventCard(event))
@@ -5778,7 +6321,7 @@ export default function App() {
       );
     }
 
-    if (activeTab === 'food' && foodViewMode === 'recipes') {
+    if (currentTab === 'food' && foodViewMode === 'recipes') {
       const recipeTags = ['All', 'Quick', 'Dinner', 'Dessert', 'Healthy', 'Breakfast', 'Lunch'];
       const recipeColors = ['#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899'];
 
@@ -5799,106 +6342,156 @@ export default function App() {
 
       return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={styles.container}>
+        <View style={dynamicStyles.container}>
           {/* Subheader */}
-          <View style={styles.foodSubHeader}>
-            <View style={styles.foodToggle}>
+          <View style={dynamicStyles.foodSubHeader}>
+            <View style={dynamicStyles.foodToggle}>
               <TouchableOpacity onPress={() => setFoodViewMode('restaurants')}>
-                <Text style={styles.foodToggleWord}>Restaurants</Text>
+                <Text style={[dynamicStyles.foodToggleWord, { color: themeColors.textSecondary }]}>Restaurants</Text>
               </TouchableOpacity>
-              <Text style={styles.foodToggleSeparator}>•</Text>
+              <Text style={dynamicStyles.foodToggleSeparator}>•</Text>
               <TouchableOpacity onPress={() => setFoodViewMode('recipes')}>
-                <Text style={[styles.foodToggleWord, styles.foodToggleWordActive]}>Recipes</Text>
+                <Text style={dynamicStyles.foodToggleWord}>Recipes</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Search */}
-          <View style={styles.foodSearchBar}>
-            <Search size={18} color="#9ca3af" />
+          <View style={dynamicStyles.foodSearchBar}>
+            <Search size={18} color={themeColors.textMuted} />
             <TextInput
-              style={styles.foodSearchInput}
+              style={dynamicStyles.foodSearchInput}
               placeholder="Search recipes..."
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={themeColors.textMuted}
               value={foodSearchQuery}
               onChangeText={setFoodSearchQuery}
             />
           </View>
 
           {/* Tag Filter */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={{ paddingRight: 24, alignItems: 'center' }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.categoryScroll} contentContainerStyle={{ paddingRight: 24, alignItems: 'center' }}>
             {recipeTags.map(tag => (
               <TouchableOpacity
                 key={tag}
-                style={[styles.categoryPill, selectedCuisine === tag && styles.categoryPillActive]}
+                style={[dynamicStyles.filterPill, selectedCuisine === tag && dynamicStyles.filterPillActive]}
                 onPress={() => setSelectedCuisine(tag)}
               >
-                <Text style={[styles.categoryPillText, selectedCuisine === tag && styles.categoryPillTextActive]}>{tag}</Text>
+                <Text style={[dynamicStyles.filterPillText, selectedCuisine === tag && dynamicStyles.filterPillTextActive]}>{tag}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           {/* Recipes List */}
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
             {isExtractingRecipe && (
-              <View style={styles.recipeLoadingBanner}>
-                <ActivityIndicator color="#60A5FA" />
-                <Text style={styles.recipeLoadingText}>Extracting recipe…</Text>
+              <View style={dynamicStyles.recipeLoadingBanner}>
+                <ActivityIndicator color={themeColors.accentPrimary} />
+                <Text style={dynamicStyles.recipeLoadingText}>Extracting recipe…</Text>
               </View>
             )}
             {visibleRecipes.length === 0 ? (
-              <View style={[styles.emptyState, { marginTop: 40 }]}>
-                <BookOpen size={48} color="#9ca3af" />
-                <Text style={styles.emptyStateText}>No recipes yet</Text>
-                <Text style={styles.emptyStateSubtext}>
+              <View style={[dynamicStyles.emptyState, { marginTop: 40 }]}>
+                <BookOpen size={48} color={themeColors.textMuted} />
+                <Text style={dynamicStyles.emptyStateText}>No recipes yet</Text>
+                <Text style={dynamicStyles.emptyStateSubtext}>
                   Tap + to add your first recipe
                 </Text>
               </View>
             ) : (
               visibleRecipes.map((recipe, index) => {
                 const bgColor = recipeColors[index % recipeColors.length];
+
+                const handleDeleteRecipe = () => {
+                  Alert.alert(
+                    'Delete Recipe',
+                    `Are you sure you want to delete "${recipe.title}"?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: () => deleteRecipe(recipe.id),
+                      },
+                    ]
+                  );
+                };
+
+                const renderRightActions = (progress, dragX) => {
+                  const scale = dragX.interpolate({
+                    inputRange: [-100, 0],
+                    outputRange: [1, 0.5],
+                    extrapolate: 'clamp',
+                  });
+                  const opacity = dragX.interpolate({
+                    inputRange: [-100, -50, 0],
+                    outputRange: [1, 0.8, 0],
+                    extrapolate: 'clamp',
+                  });
+
+                  return (
+                    <TouchableOpacity
+                      onPress={handleDeleteRecipe}
+                      activeOpacity={0.8}
+                    >
+                      <Animated.View
+                        style={[
+                          dynamicStyles.swipeDeleteAction,
+                          { opacity, transform: [{ scale }] },
+                        ]}
+                      >
+                        <Trash2 size={22} color="#fff" />
+                      </Animated.View>
+                    </TouchableOpacity>
+                  );
+                };
+
                 return (
-                  <TouchableOpacity
+                  <Swipeable
                     key={recipe.id}
-                    style={styles.newRecipeCard}
-                    onPress={() => setSelectedRecipe(recipe)}
-                    activeOpacity={0.8}
+                    renderRightActions={renderRightActions}
+                    overshootRight={false}
                   >
-                    {/* Content */}
-                    <View style={styles.newRecipeCardContent}>
-                      <Text style={styles.newRecipeTitle}>{recipe.title}</Text>
-                      {recipe.description && (
-                        <Text style={styles.newRecipeDescription} numberOfLines={2}>{recipe.description}</Text>
-                      )}
+                    <TouchableOpacity
+                      style={dynamicStyles.newRecipeCard}
+                      onPress={() => setSelectedRecipe(recipe)}
+                      activeOpacity={0.8}
+                    >
+                      {/* Content */}
+                      <View style={dynamicStyles.newRecipeCardContent}>
+                        <Text style={dynamicStyles.newRecipeTitle}>{recipe.title}</Text>
+                        {recipe.description && (
+                          <Text style={dynamicStyles.newRecipeDescription} numberOfLines={2}>{recipe.description}</Text>
+                        )}
 
-                      {/* Meta Row */}
-                      <View style={styles.newRecipeMetaRow}>
-                        <View style={styles.newRecipeMeta}>
-                          <Clock size={14} color="#6b7280" />
-                          <Text style={styles.newRecipeMetaText}>{recipe.cookTime || '35 min'}</Text>
+                        {/* Meta Row */}
+                        <View style={dynamicStyles.newRecipeMetaRow}>
+                          <View style={dynamicStyles.newRecipeMeta}>
+                            <Clock size={14} color={themeColors.textSecondary} />
+                            <Text style={dynamicStyles.newRecipeMetaText}>{recipe.cookTime || '35 min'}</Text>
+                          </View>
+                          <View style={dynamicStyles.newRecipeMeta}>
+                            <Users size={14} color={themeColors.textSecondary} />
+                            <Text style={dynamicStyles.newRecipeMetaText}>{recipe.servings || '4'} servings</Text>
+                          </View>
+                          <View style={dynamicStyles.newRecipeMeta}>
+                            <Star size={14} color={themeColors.textSecondary} />
+                            <Text style={dynamicStyles.newRecipeMetaText}>{recipe.difficulty || 'Easy'}</Text>
+                          </View>
                         </View>
-                        <View style={styles.newRecipeMeta}>
-                          <Users size={14} color="#6b7280" />
-                          <Text style={styles.newRecipeMetaText}>{recipe.servings || '4'} servings</Text>
-                        </View>
-                        <View style={styles.newRecipeMeta}>
-                          <Star size={14} color="#6b7280" />
-                          <Text style={styles.newRecipeMetaText}>{recipe.difficulty || 'Easy'}</Text>
-                        </View>
+
+                        {/* Tags Row */}
+                        {Array.isArray(recipe.tags) && recipe.tags.length > 0 && (
+                          <View style={dynamicStyles.recipeTagsRow}>
+                            {recipe.tags.map(tag => (
+                              <View key={tag} style={dynamicStyles.recipeTagChip}>
+                                <Text style={dynamicStyles.recipeTagChipText}>{tag}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
                       </View>
-
-                      {/* Tags Row */}
-                      {Array.isArray(recipe.tags) && recipe.tags.length > 0 && (
-                        <View style={styles.recipeTagsRow}>
-                          {recipe.tags.map(tag => (
-                            <View key={tag} style={styles.recipeTagChip}>
-                              <Text style={styles.recipeTagChipText}>{tag}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  </Swipeable>
                 );
               })
             )}
@@ -5908,7 +6501,7 @@ export default function App() {
       );
     }
 
-    if (activeTab === 'food' && foodViewMode === 'restaurants') {
+    if (currentTab === 'food' && foodViewMode === 'restaurants') {
       // Filter and sort restaurants
       let restaurants = getFilteredItems()
         .filter(item => item && item.category === 'restaurants')
@@ -5943,18 +6536,8 @@ export default function App() {
         const restaurantsWithLocation = restaurants.filter(r => r.location && r.location.latitude && r.location.longitude);
         const hasUserLocation = userLocation && Number.isFinite(userLocation.latitude) && Number.isFinite(userLocation.longitude);
 
+        // Show ALL restaurants (user can pan to see restaurants in other areas)
         let restaurantsInRange = restaurantsWithLocation;
-        if (hasUserLocation) {
-          restaurantsInRange = restaurantsWithLocation.filter(restaurant => {
-            const distance = getDistanceInMiles(
-              userLocation.latitude,
-              userLocation.longitude,
-              restaurant.location.latitude,
-              restaurant.location.longitude
-            );
-            return distance <= mapRadius;
-          });
-        }
 
         let centerLat = 0, centerLon = 0, latDelta = 0.2, lonDelta = 0.2;
 
@@ -6148,7 +6731,7 @@ export default function App() {
         return (
           <TouchableOpacity
             key={item.id}
-            style={styles.restaurantCard}
+            style={dynamicStyles.restaurantCard}
             onPress={() => {
               if (restaurantEditMode) {
                 openEditForm(item, 'item');
@@ -6158,37 +6741,34 @@ export default function App() {
             }}
             activeOpacity={0.85}
           >
-            <View style={styles.restaurantIcon}>
-              <Utensils size={24} color="#b45309" />
-            </View>
-            <View style={styles.restaurantInfo}>
-              <Text style={styles.restaurantName}>{item.title}</Text>
-              <Text style={styles.restaurantCuisine}>
+            <View style={dynamicStyles.restaurantInfo}>
+              <Text style={dynamicStyles.restaurantName}>{item.title}</Text>
+              <Text style={dynamicStyles.restaurantCuisine}>
                 {item.cuisine || 'Restaurant'}{item.notes ? ' · ' + item.notes.substring(0, 40) + (item.notes.length > 40 ? '...' : '') : ''}
               </Text>
-              <View style={styles.restaurantRating}>
+              <View style={dynamicStyles.restaurantRating}>
                 <Star size={14} color="#F59E0B" fill="#F59E0B" />
                 <Star size={14} color="#F59E0B" fill="#F59E0B" />
                 <Star size={14} color="#F59E0B" fill="#F59E0B" />
                 <Star size={14} color="#F59E0B" fill="#F59E0B" />
-                <Star size={14} color="#e5e7eb" fill="#e5e7eb" />
-                <Text style={styles.restaurantRatingText}>4.0</Text>
+                <Star size={14} color={theme === 'dark' ? '#374151' : '#e5e7eb'} fill={theme === 'dark' ? '#374151' : '#e5e7eb'} />
+                <Text style={dynamicStyles.restaurantRatingText}>4.0</Text>
               </View>
-              <View style={styles.restaurantDetails}>
+              <View style={dynamicStyles.restaurantDetails}>
                 {distance && (
-                  <View style={styles.restaurantDetail}>
-                    <MapPin size={12} color="#6b7280" />
-                    <Text style={styles.restaurantDetailText}>{distance.toFixed(1)} mi</Text>
+                  <View style={dynamicStyles.restaurantDetail}>
+                    <MapPin size={12} color={themeColors.textSecondary} />
+                    <Text style={dynamicStyles.restaurantDetailText}>{distance.toFixed(1)} mi</Text>
                   </View>
                 )}
                 {item.priceRange && (
-                  <View style={styles.restaurantDetail}>
-                    <Text style={styles.restaurantDetailText}>{item.priceRange}</Text>
+                  <View style={dynamicStyles.restaurantDetail}>
+                    <Text style={dynamicStyles.restaurantDetailText}>{item.priceRange}</Text>
                   </View>
                 )}
-                <View style={styles.restaurantDetail}>
-                  <Clock size={12} color="#6b7280" />
-                  <Text style={styles.restaurantDetailText}>25 min</Text>
+                <View style={dynamicStyles.restaurantDetail}>
+                  <Clock size={12} color={themeColors.textSecondary} />
+                  <Text style={dynamicStyles.restaurantDetailText}>25 min</Text>
                 </View>
               </View>
             </View>
@@ -6199,47 +6779,53 @@ export default function App() {
       // Restaurants list or box view with drag-and-drop
       return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={styles.container}>
+        <View style={dynamicStyles.container}>
           {/* Subheader */}
-          <View style={styles.foodSubHeader}>
-            <View style={styles.foodToggle}>
+          <View style={dynamicStyles.foodSubHeader}>
+            <View style={dynamicStyles.foodToggle}>
               <TouchableOpacity onPress={() => setFoodViewMode('restaurants')}>
-                <Text style={[styles.foodToggleWord, styles.foodToggleWordActive]}>Restaurants</Text>
+                <Text style={dynamicStyles.foodToggleWord}>Restaurants</Text>
               </TouchableOpacity>
-              <Text style={styles.foodToggleSeparator}>•</Text>
+              <Text style={dynamicStyles.foodToggleSeparator}>•</Text>
               <TouchableOpacity onPress={() => setFoodViewMode('recipes')}>
-                <Text style={styles.foodToggleWord}>Recipes</Text>
+                <Text style={[dynamicStyles.foodToggleWord, { color: themeColors.textSecondary }]}>Recipes</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={dynamicStyles.viewToggleIcons}>
+              <TouchableOpacity
+                style={[dynamicStyles.viewToggleIconBtn, restaurantViewMode === 'list' && dynamicStyles.viewToggleIconBtnActive]}
+                onPress={() => setRestaurantViewMode('list')}
+              >
+                <Menu size={18} color={restaurantViewMode === 'list' ? '#fff' : themeColors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[dynamicStyles.viewToggleIconBtn, restaurantViewMode === 'map' && dynamicStyles.viewToggleIconBtnActive]}
+                onPress={() => setRestaurantViewMode('map')}
+              >
+                <MapIcon size={18} color={restaurantViewMode === 'map' ? '#fff' : themeColors.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.foodSearchBar}>
-            <Search size={18} color="#9ca3af" />
-            <TextInput style={styles.foodSearchInput} placeholder="Search restaurants..." placeholderTextColor="#9ca3af" value={foodSearchQuery} onChangeText={setFoodSearchQuery} />
+          <View style={dynamicStyles.foodSearchBar}>
+            <Search size={18} color={themeColors.textMuted} />
+            <TextInput style={dynamicStyles.foodSearchInput} placeholder="Search restaurants..." placeholderTextColor={themeColors.textMuted} value={foodSearchQuery} onChangeText={setFoodSearchQuery} />
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={{ paddingRight: 24, alignItems: 'center' }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.categoryScroll} contentContainerStyle={{ paddingRight: 24, alignItems: 'center' }}>
             {categories.map(category => (
-              <TouchableOpacity key={category} style={[styles.categoryPill, selectedCuisine === category && styles.categoryPillActive]} onPress={() => setSelectedCuisine(category)}>
-                <Text style={[styles.categoryPillText, selectedCuisine === category && styles.categoryPillTextActive]}>{category}</Text>
+              <TouchableOpacity key={category} style={[dynamicStyles.filterPill, selectedCuisine === category && dynamicStyles.filterPillActive]} onPress={() => setSelectedCuisine(category)}>
+                <Text style={[dynamicStyles.filterPillText, selectedCuisine === category && dynamicStyles.filterPillTextActive]}>{category}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
-          <View style={styles.viewToggle}>
-            <TouchableOpacity style={[styles.viewToggleButton, restaurantViewMode === 'list' && styles.viewToggleButtonActive]} onPress={() => setRestaurantViewMode('list')}>
-              <Text style={[styles.viewToggleText, restaurantViewMode === 'list' && styles.viewToggleTextActive]}>LIST VIEW</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.viewToggleButton, restaurantViewMode === 'map' && styles.viewToggleButtonActive]} onPress={() => setRestaurantViewMode('map')}>
-              <Text style={[styles.viewToggleText, restaurantViewMode === 'map' && styles.viewToggleTextActive]}>MAP VIEW</Text>
-            </TouchableOpacity>
-          </View>
 
           {restaurantViewMode === 'map' ? (
             (() => {
               const { restaurantsInRange, hasUserLocation, centerLat, centerLon, latDelta, lonDelta } = getMapData();
               if (restaurantsInRange.length === 0 && !hasUserLocation) {
                 return (
-                  <View style={[styles.emptyState, { marginTop: 40 }]}>
-                    <MapPin size={48} color="#9ca3af" />
-                    <Text style={{ fontSize: 16, color: '#6b7280', marginTop: 12 }}>No restaurants with locations</Text>
+                  <View style={[dynamicStyles.emptyState, { marginTop: 40 }]}>
+                    <MapPin size={48} color={themeColors.textMuted} />
+                    <Text style={{ fontSize: 16, color: themeColors.textSecondary, marginTop: 12 }}>No restaurants with locations</Text>
                   </View>
                 );
               }
@@ -6304,17 +6890,15 @@ export default function App() {
 
     // Ideas tab with drag-and-drop; default category list
     const listItems = filteredItems.sort((a, b) => (a.order || 0) - (b.order || 0));
-    const isIdeas = activeTab === 'ideas';
+    const isIdeas = currentTab === 'ideas';
     if (isIdeas) {
       const completedIdeas = listItems.filter(item => item.completed);
       const activeIdeas = listItems.filter(item => !item.completed);
       const orderedIdeas = [...activeIdeas, ...completedIdeas];
       return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={styles.container}>
-          <View style={dynamicStyles.content}>
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: themeColors.background }}>
             {orderedIdeas.length === 0 ? (
-              <View style={styles.emptyState}>
+              <View style={[dynamicStyles.emptyState, { flex: 1, justifyContent: 'center' }]}>
                 <List size={48} color={themeColors.textSecondary} />
                 <Text style={dynamicStyles.emptyStateText}>No items yet</Text>
                 <Text style={dynamicStyles.emptyStateSubtext}>Tap the + button to add your first item</Text>
@@ -6325,14 +6909,51 @@ export default function App() {
                 onDragEnd={({ data }) => handleReorderCategory('ideas', data)}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item, drag, isActive }) => {
-                  const renderRightActions = () => (
-                    <View style={styles.swipeActionContainer}>
-                      <View style={styles.swipeDeleteButton}>
-                        <Trash2 size={24} color="#fff" />
-                        <Text style={styles.swipeDeleteText}>Delete</Text>
-                      </View>
-                    </View>
-                  );
+                  const handleDeleteIdea = () => {
+                    Alert.alert(
+                      'Delete Idea',
+                      `Are you sure you want to delete "${item.title}"?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () => {
+                            deleteItem(item.id, item.isPersonal ? 'ideas' : 'ideas');
+                          },
+                        },
+                      ]
+                    );
+                  };
+
+                  const renderRightActions = (progress, dragX) => {
+                    const scale = dragX.interpolate({
+                      inputRange: [-100, 0],
+                      outputRange: [1, 0.5],
+                      extrapolate: 'clamp',
+                    });
+                    const opacity = dragX.interpolate({
+                      inputRange: [-100, -50, 0],
+                      outputRange: [1, 0.8, 0],
+                      extrapolate: 'clamp',
+                    });
+
+                    return (
+                      <TouchableOpacity
+                        onPress={handleDeleteIdea}
+                        activeOpacity={0.8}
+                      >
+                        <Animated.View
+                          style={[
+                            dynamicStyles.swipeDeleteAction,
+                            { opacity, transform: [{ scale }] },
+                          ]}
+                        >
+                          <Trash2 size={22} color="#fff" />
+                        </Animated.View>
+                      </TouchableOpacity>
+                    );
+                  };
 
                   const IdeaContent = (
                   <TouchableOpacity
@@ -6341,30 +6962,64 @@ export default function App() {
                     disabled={isActive}
                     style={{ opacity: isActive ? 0.5 : 1 }}
                   >
-                    <View style={styles.ideaCard}>
-                      <View style={styles.ideaCardHeader}>
-                        <Text style={[styles.ideaTitle, item.completed && styles.completedText]}>
+                    <View style={dynamicStyles.ideaCard}>
+                      <View style={dynamicStyles.ideaCardHeader}>
+                        <Text style={[dynamicStyles.ideaTitle, item.completed && dynamicStyles.completedText]} numberOfLines={2}>
                           {item.title}
                         </Text>
-                        <View style={styles.ideaCategoryBadge}>
-                          <Text style={styles.ideaCategoryBadgeText}>
+                        <View style={dynamicStyles.ideaCategoryBadge}>
+                          <Text style={dynamicStyles.ideaCategoryBadgeText}>
                             {item.isPersonal ? 'Personal' : 'Household'}
                           </Text>
                         </View>
                       </View>
                       {item.notes && (
-                        <Text style={[styles.ideaDescription, item.completed && styles.completedText]}>
+                        <Text style={[dynamicStyles.ideaDescription, item.completed && dynamicStyles.completedText]}>
                           {item.notes}
                         </Text>
                       )}
-                      <View style={styles.ideaCardFooter}>
-                        <Text style={styles.ideaCardDate}>Added Dec 5</Text>
-                        <View style={styles.ideaCardActions}>
-                          <TouchableOpacity onPress={(e) => { e.stopPropagation(); openEditForm(item, 'item'); }}>
-                            <Pencil size={16} color="#9ca3af" />
-                          </TouchableOpacity>
+                      {/* Display tags */}
+                      {item.tagIds && item.tagIds.length > 0 && (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                          {item.tagIds.map((tagId) => {
+                            const tag = ideaTags.find(t => t.id === tagId);
+                            if (!tag) return null;
+                            return (
+                              <View
+                                key={tagId}
+                                style={{
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 3,
+                                  borderRadius: 12,
+                                  backgroundColor: tag.color + '20',
+                                }}
+                              >
+                                <View
+                                  style={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: 3,
+                                    backgroundColor: tag.color,
+                                    marginRight: 4,
+                                  }}
+                                />
+                                <Text style={{ fontSize: 11, color: tag.color, fontWeight: '500' }}>
+                                  {tag.name}
+                                </Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      )}
+                      <View style={dynamicStyles.ideaCardFooter}>
+                        <Text style={dynamicStyles.ideaCardDate}>
+                          {item.createdAt ? 'Added ' + new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+                        </Text>
+                        <View style={dynamicStyles.ideaCardActions}>
                           <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleIdeaFavorite(item); }}>
-                            <Star size={16} color={item.favorited ? '#f59e0b' : '#9ca3af'} fill={item.favorited ? '#f59e0b' : 'none'} />
+                            <Star size={22} color={item.favorited ? themeColors.accentPrimary : themeColors.textMuted} fill={item.favorited ? themeColors.accentPrimary : 'none'} />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -6376,26 +7031,24 @@ export default function App() {
                     <Swipeable
                       key={item.id}
                       renderRightActions={renderRightActions}
-                      onSwipeableRightOpen={() => deleteItem(item.id)}
-                      rightThreshold={80}
+                      rightThreshold={40}
                       overshootRight={false}
+                      friction={2}
                       enabled={!isActive}
                     >
                       {IdeaContent}
                     </Swipeable>
                   );
                 }}
-                contentContainerStyle={{ paddingBottom: 16 }}
+                contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 0 }}
               />
             )}
-          </View>
-        </View>
         </GestureHandlerRootView>
       );
     }
 
     // All items tab with collapsible categories
-    if (activeTab === 'all') {
+    if (currentTab === 'all') {
       // Group items by category, filtering out hidden tabs
       const groupedItems = {};
       filteredItems.forEach(item => {
@@ -6467,8 +7120,8 @@ export default function App() {
                 </>
               ) : (
                 <View style={styles.itemTitleRow}>
-                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleComplete(item.id, 'items'); }}>
-                    <View style={dynamicStyles.checkbox}>
+                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleComplete(item.id, 'items'); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <View style={[dynamicStyles.checkbox, item.completed && dynamicStyles.checkboxCompleted]}>
                       {item.completed && <Check size={16} color="#fff" />}
                     </View>
                   </TouchableOpacity>
@@ -6558,7 +7211,7 @@ export default function App() {
     }
 
     // Groceries tab with categories and quick-add
-    if (activeTab === 'groceries') {
+    if (currentTab === 'groceries') {
       const groceryItems = [...filteredItems].sort((a, b) => (a.order || 0) - (b.order || 0));
 
       // Group by subcategory
@@ -6596,8 +7249,6 @@ export default function App() {
         .filter(i => !i.completed && typeof i.price === 'number')
         .reduce((sum, i) => sum + i.price, 0);
 
-      const frequentItems = getFrequentGroceryItems();
-
       const categoryConfig = {
         produce: { label: 'Produce', emoji: '🥬' },
         dairy: { label: 'Dairy', emoji: '🥛' },
@@ -6613,45 +7264,27 @@ export default function App() {
       const categoryOrder = ['produce', 'dairy', 'meat', 'bakery', 'pantry', 'frozen', 'beverages', 'household', 'other'];
 
       return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <View style={styles.container}>
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: themeColors.background }}>
+          <View style={dynamicStyles.container}>
+            {/* Shop Mode Selector */}
+            <View style={dynamicStyles.shopModeSelector}>
+              <TouchableOpacity
+                style={[dynamicStyles.shopModeButton, shopMode === 'grocery' && dynamicStyles.shopModeButtonActive]}
+                onPress={() => setShopMode('grocery')}
+              >
+                <Text style={[dynamicStyles.shopModeButtonText, shopMode === 'grocery' && dynamicStyles.shopModeButtonTextActive]}>Grocery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[dynamicStyles.shopModeButton, shopMode === 'other' && dynamicStyles.shopModeButtonActive]}
+                onPress={() => setShopMode('other')}
+              >
+                <Text style={[dynamicStyles.shopModeButtonText, shopMode === 'other' && dynamicStyles.shopModeButtonTextActive]}>Other</Text>
+              </TouchableOpacity>
+            </View>
+
             <ScrollView style={dynamicStyles.content} contentContainerStyle={{ paddingBottom: 120 }}>
-              {/* Stats Header */}
-              {totalItems > 0 && (
-                <View style={styles.groceryStatsHeader}>
-                  <Text style={styles.groceryStatsText}>
-                    {activeItems} {activeItems === 1 ? 'item' : 'items'} remaining
-                    {tabSettings.groceries?.showPrices !== false && totalPrice > 0 && (
-                      <Text style={styles.groceryStatsPrice}> • ${totalPrice.toFixed(2)} est.</Text>
-                    )}
-                  </Text>
-                </View>
-              )}
-
-              {/* Frequent Items Quick-Add */}
-              {frequentItems.length > 0 && (
-                <View style={styles.frequentItemsContainer}>
-                  <Text style={styles.frequentItemsLabel}>Quick Add</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.frequentItemsScroll}
-                  >
-                    {frequentItems.map((item, idx) => (
-                      <TouchableOpacity
-                        key={`frequent-${idx}`}
-                        style={styles.frequentItemChip}
-                        onPress={() => handleQuickAddGrocery(item.title, item.subcategory, item.price)}
-                        activeOpacity={0.7}
-                      >
-                        <Plus size={14} color={themeColors.accentPrimary} />
-                        <Text style={styles.frequentItemChipText} numberOfLines={1}>{item.title}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-
+              {shopMode === 'grocery' ? (
+                <>
               {/* Empty State or Category Sections */}
               {totalItems === 0 ? (
                 <View style={styles.emptyState}>
@@ -6669,9 +7302,9 @@ export default function App() {
                   const completedCount = categoryItems.filter(i => i.completed).length;
 
                   return (
-                    <View key={subcategory} style={styles.groceryCategorySection}>
+                    <View key={subcategory} style={dynamicStyles.groceryCategorySection}>
                       <TouchableOpacity
-                        style={styles.groceryCategoryHeader}
+                        style={dynamicStyles.groceryCategoryHeader}
                         onPress={() =>
                           setExpandedGroceryCategories(prev => ({
                             ...prev,
@@ -6680,12 +7313,12 @@ export default function App() {
                         }
                         activeOpacity={0.7}
                       >
-                        <View style={styles.groceryCategoryHeaderLeft}>
-                          <Text style={styles.groceryCategoryEmoji}>{config.emoji}</Text>
-                          <Text style={styles.groceryCategoryTitle}>
+                        <View style={dynamicStyles.groceryCategoryHeaderLeft}>
+                          <Text style={dynamicStyles.groceryCategoryEmoji}>{config.emoji}</Text>
+                          <Text style={dynamicStyles.groceryCategoryTitle}>
                             {config.label}
                           </Text>
-                          <Text style={styles.groceryCategoryCount}>
+                          <Text style={dynamicStyles.groceryCategoryCount}>
                             {categoryItems.length - completedCount}/{categoryItems.length}
                           </Text>
                         </View>
@@ -6697,45 +7330,80 @@ export default function App() {
                       </TouchableOpacity>
 
                       {isExpanded && categoryItems.map((item) => {
-                        const renderRightActions = () => (
-                          <View style={styles.swipeActionContainer}>
-                            <View style={styles.swipeDeleteButton}>
-                              <Trash2 size={24} color="#fff" />
-                              <Text style={styles.swipeDeleteText}>Delete</Text>
-                            </View>
-                          </View>
-                        );
+                        const handleDeleteGrocery = () => {
+                          Alert.alert(
+                            'Delete Item',
+                            `Are you sure you want to delete "${item.title}"?`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: () => deleteItem(item.id),
+                              },
+                            ]
+                          );
+                        };
+
+                        const renderRightActions = (progress, dragX) => {
+                          const scale = dragX.interpolate({
+                            inputRange: [-100, 0],
+                            outputRange: [1, 0.5],
+                            extrapolate: 'clamp',
+                          });
+                          const opacity = dragX.interpolate({
+                            inputRange: [-100, -50, 0],
+                            outputRange: [1, 0.8, 0],
+                            extrapolate: 'clamp',
+                          });
+
+                          return (
+                            <TouchableOpacity
+                              onPress={handleDeleteGrocery}
+                              activeOpacity={0.8}
+                            >
+                              <Animated.View
+                                style={[
+                                  dynamicStyles.swipeDeleteAction,
+                                  { opacity, transform: [{ scale }] },
+                                ]}
+                              >
+                                <Trash2 size={22} color="#fff" />
+                              </Animated.View>
+                            </TouchableOpacity>
+                          );
+                        };
 
                         return (
                           <Swipeable
                             key={item.id}
                             renderRightActions={renderRightActions}
-                            onSwipeableRightOpen={() => deleteItem(item.id)}
-                            rightThreshold={80}
+                            rightThreshold={40}
                             overshootRight={false}
+                            friction={2}
                           >
                             <TouchableOpacity
                               onPress={() => openEditForm(item, 'item')}
                               activeOpacity={0.7}
                             >
-                              <View style={[styles.groceryCard, item.completed && styles.groceryCardCompleted]}>
+                              <View style={[dynamicStyles.groceryCard, item.completed && dynamicStyles.groceryCardCompleted]}>
                                 <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleComplete(item.id); }}>
-                                  <View style={[styles.groceryCheckbox, item.completed && styles.groceryCheckboxChecked]}>
+                                  <View style={[dynamicStyles.groceryCheckbox, item.completed && dynamicStyles.groceryCheckboxChecked]}>
                                     {item.completed && <Check size={16} color="#fff" />}
                                   </View>
                                 </TouchableOpacity>
-                                <View style={styles.groceryInfo}>
-                                  <Text style={[styles.groceryName, item.completed && styles.groceryNameChecked]}>
+                                <View style={dynamicStyles.groceryInfo}>
+                                  <Text style={[dynamicStyles.groceryName, item.completed && dynamicStyles.groceryNameChecked]}>
                                     {item.title}
                                   </Text>
                                   {item.notes && (
-                                    <Text style={[styles.ideaDescription, item.completed && styles.completedText]} numberOfLines={1}>
+                                    <Text style={[dynamicStyles.ideaDescription, item.completed && dynamicStyles.completedText]} numberOfLines={1}>
                                       {item.notes}
                                     </Text>
                                   )}
                                 </View>
                                 {shouldShowPriceForItem(item) && typeof item.price === 'number' && (
-                                  <Text style={[styles.groceryItemPrice, item.completed && styles.completedText]}>
+                                  <Text style={[dynamicStyles.groceryItemPrice, item.completed && dynamicStyles.completedText]}>
                                     ${item.price.toFixed(2)}
                                   </Text>
                                 )}
@@ -6748,97 +7416,127 @@ export default function App() {
                   );
                 })
               )}
+                </>
+              ) : (
+                /* Other Shop Items Section */
+                <>
+                  {otherShopItems.length === 0 ? (
+                    <View style={styles.emptyState}>
+                      <ShoppingBag size={48} color={themeColors.textSecondary} />
+                      <Text style={dynamicStyles.emptyStateText}>No items yet</Text>
+                      <Text style={dynamicStyles.emptyStateSubtext}>Add items from other stores</Text>
+                    </View>
+                  ) : (
+                    otherShopItems.map((item) => {
+                      const handleDeleteOtherShop = () => {
+                        Alert.alert(
+                          'Delete Item',
+                          `Are you sure you want to delete "${item.title}"?`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: () => {
+                                setOtherShopItems(prev => prev.filter(i => i.id !== item.id));
+                              },
+                            },
+                          ]
+                        );
+                      };
+
+                      const renderRightActions = (progress, dragX) => {
+                        const scale = dragX.interpolate({
+                          inputRange: [-100, 0],
+                          outputRange: [1, 0.5],
+                          extrapolate: 'clamp',
+                        });
+                        const opacity = dragX.interpolate({
+                          inputRange: [-100, -50, 0],
+                          outputRange: [1, 0.8, 0],
+                          extrapolate: 'clamp',
+                        });
+
+                        return (
+                          <TouchableOpacity
+                            onPress={handleDeleteOtherShop}
+                            activeOpacity={0.8}
+                          >
+                            <Animated.View
+                              style={[
+                                dynamicStyles.swipeDeleteAction,
+                                { opacity, transform: [{ scale }] },
+                              ]}
+                            >
+                              <Trash2 size={22} color="#fff" />
+                            </Animated.View>
+                          </TouchableOpacity>
+                        );
+                      };
+
+                      return (
+                        <Swipeable
+                          key={item.id}
+                          renderRightActions={renderRightActions}
+                          rightThreshold={40}
+                          overshootRight={false}
+                          friction={2}
+                        >
+                          <TouchableOpacity
+                            onPress={() => openEditForm(item, 'otherShop')}
+                            activeOpacity={0.7}
+                          >
+                            <View style={[dynamicStyles.groceryCard, item.completed && dynamicStyles.groceryCardCompleted]}>
+                              <TouchableOpacity onPress={(e) => {
+                                e.stopPropagation();
+                                setOtherShopItems(prev => prev.map(i =>
+                                  i.id === item.id ? { ...i, completed: !i.completed } : i
+                                ));
+                              }}>
+                                <View style={[dynamicStyles.groceryCheckbox, item.completed && dynamicStyles.groceryCheckboxChecked]}>
+                                  {item.completed && <Check size={16} color="#fff" />}
+                                </View>
+                              </TouchableOpacity>
+                              <View style={dynamicStyles.groceryInfo}>
+                                <Text style={[dynamicStyles.groceryName, item.completed && dynamicStyles.groceryNameChecked]}>
+                                  {item.title}
+                                </Text>
+                                {item.store && (
+                                  <Text style={[dynamicStyles.ideaDescription, item.completed && dynamicStyles.completedText]} numberOfLines={1}>
+                                    {item.store}
+                                  </Text>
+                                )}
+                              </View>
+                              {typeof item.price === 'number' && (
+                                <Text style={[dynamicStyles.groceryItemPrice, item.completed && dynamicStyles.completedText]}>
+                                  ${item.price.toFixed(2)}
+                                </Text>
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                        </Swipeable>
+                      );
+                    })
+                  )}
+                </>
+              )}
             </ScrollView>
           </View>
         </GestureHandlerRootView>
       );
     }
 
-    return (
-      <View style={styles.container}>
-        <ScrollView style={styles.content}>
-          {filteredItems.length === 0 ? (
-            <View style={styles.emptyState}>
-              <List size={48} color="#6B7280" />
-              <Text style={styles.emptyStateText}>No items yet</Text>
-              <Text style={styles.emptyStateSubtext}>Tap the + button to add your first item</Text>
-            </View>
-          ) : (
-            filteredItems.map(item => (
-              <TouchableOpacity key={item.id} onPress={() => openEditForm(item, 'item')}>
-                <View style={styles.itemCard}>
-                  {item.category === 'todo' && item.priority && (
-                    <View style={[styles.priorityIndicator, { backgroundColor: getPriorityColor(item.priority) }]} />
-                  )}
-                  <View style={styles.itemHeader}>
-                    <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
-                      {getCategoryIcon(item.category)}
-                      <Text style={styles.categoryText}>{item.category}</Text>
-                    </View>
-                    <TouchableOpacity onPress={(e) => { e.stopPropagation(); deleteItem(item.id); }}>
-                      <Trash2 size={18} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.itemContent}>
-                    <View style={styles.itemTitleRow}>
-                      <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleComplete(item.id); }}>
-                        <View style={styles.checkbox}>
-                          {item.completed && <Check size={16} color="#fff" />}
-                        </View>
-                      </TouchableOpacity>
-                      <Text style={[styles.itemTitle, item.completed && styles.completedText]}>
-                        {item.title}
-                      </Text>
-                    </View>
-                  </View>
-                  {shouldShowLocationForItem(item) && (
-                    <View style={styles.itemLocation}>
-                      <MapPin size={14} color="#9CA3AF" />
-                      <Text style={styles.locationText}>{item.location.address}</Text>
-                    </View>
-                  )}
-                  {item.cuisine && (
-                    <Text style={styles.itemDetail}>Cuisine: {item.cuisine}</Text>
-                  )}
-                  {item.priceRange && shouldShowPriceForItem(item) && (
-                    <Text style={styles.itemDetail}>Price: {item.priceRange}</Text>
-                  )}
-                  {item.notes && (
-                    <Text style={styles.itemNotes}>{item.notes}</Text>
-                  )}
-                  {item.dueDate && (
-                    <Text style={styles.itemDueDate}>Due: {formatDate(item.dueDate)}</Text>
-                  )}
-                  {item.category === 'groceries' && shouldShowPriceForItem(item) && typeof item.price === 'number' && (
-                    <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
-      </View>
-    );
+    // Fallback - should never reach here since currentTab is always valid
+    // But if it does, return null to avoid showing incorrect content
+    return null;
   };
 
   const getCategoryColor = (category) => {
-    const colors = {
-      restaurants: '#EF4444',
-      ideas: '#8B5CF6',
-      groceries: '#10B981',
-      todo: '#2563EB'
-    };
-    return colors[category] || '#6B7280';
+    return getThemeCategoryColor(category, theme);
   };
 
   const getPriorityColor = (priority) => {
-    const colors = {
-      low: '#10B981',      // Green
-      medium: '#F59E0B',   // Orange
-      high: '#EF4444',     // Red
-      urgent: '#4a0000',   // Very Dark Maroon
-    };
-    return colors[priority] || colors.medium;
+    return getThemePriorityColor(priority, theme);
   };
 
   // Get priority weight for sorting (higher number = higher priority)
@@ -6854,37 +7552,23 @@ export default function App() {
     return weights[normalizedPriority] || 2; // Default to medium if unknown
   };
 
-  // Theme colors
-  const themeColors = theme === 'light' ? {
-    background: '#fdfaf5',
-    surface: '#ffffff',
-    surfaceSecondary: '#f8f5f0',
-    text: '#1f2933',
-    textSecondary: '#6b7280',
-    textMuted: '#9ca3af',
-    border: '#e5e7eb',
-    borderWarm: '#d4c5b0',
-    inputBg: '#FFFFFF',
-    inputBorder: '#D1D5DB',
-    accentPrimary: '#b45309',
-    accentSecondary: '#10b981',
-    shadowSoft: 'rgba(15,23,42,0.08)',
-    shadowMedium: 'rgba(15,23,42,0.12)',
-  } : {
-    background: '#111827',
-    surface: '#1F2937',
-    surfaceSecondary: '#374151',
-    text: '#FFFFFF',
-    textSecondary: '#9CA3AF',
-    textMuted: '#6B7280',
-    border: '#1F2937',
-    borderWarm: '#4B5563',
-    inputBg: '#374151',
-    inputBorder: '#4B5563',
-    accentPrimary: '#f59e0b',
-    accentSecondary: '#10b981',
-    shadowSoft: 'rgba(0,0,0,0.2)',
-    shadowMedium: 'rgba(0,0,0,0.3)',
+  // Theme colors - using centralized theme system
+  const colors = getThemeColors(theme);
+  const themeColors = {
+    background: colors.background,
+    surface: colors.surface,
+    surfaceSecondary: colors.surfaceElevated,
+    text: colors.text,
+    textSecondary: colors.textSecondary,
+    textMuted: colors.textMuted,
+    border: colors.border,
+    borderWarm: colors.borderWarm,
+    inputBg: colors.inputBg,
+    inputBorder: colors.inputBorder,
+    accentPrimary: colors.accent,
+    accentSecondary: colors.success,
+    shadowSoft: colors.shadow,
+    shadowMedium: colors.shadowMedium,
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -7024,25 +7708,2028 @@ export default function App() {
     activeViewModeText: {
       color: '#fff',
     },
+    // App Header
+    appHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 16,
+      backgroundColor: themeColors.background,
+    },
+    logoContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    logoIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: themeColors.accentPrimary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    logoText: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: themeColors.text,
+      letterSpacing: -0.5,
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    avatarButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: themeColors.surfaceSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    avatarText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    settingsButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      backgroundColor: themeColors.surface,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Bottom Tab Bar
+    bottomTabBar: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 85,
+      backgroundColor: themeColors.surface,
+      borderTopWidth: 1,
+      borderTopColor: themeColors.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+      paddingBottom: 20,
+      paddingTop: 8,
+    },
+    bottomTabLabel: {
+      fontSize: 11,
+      fontWeight: '500',
+      color: themeColors.textSecondary,
+    },
+    // Page Headers
+    pageMainTitle: {
+      fontFamily: 'PlayfairDisplay_400Regular',
+      fontSize: 28,
+      color: themeColors.text,
+    },
+    // Section Headers
+    sectionTitle: {
+      fontFamily: 'PlayfairDisplay_400Regular_Italic',
+      fontSize: 22,
+      color: themeColors.text,
+      marginBottom: 12,
+    },
+    sectionSubtitle: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+      marginTop: -8,
+      marginBottom: 16,
+    },
+    // Cards
+    card: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      shadowColor: themeColors.shadowSoft,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    cardTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: themeColors.text,
+      marginBottom: 4,
+    },
+    cardSubtitle: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    cardText: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+      lineHeight: 20,
+    },
+    // Today Screen
+    container: {
+      flex: 1,
+      backgroundColor: themeColors.background,
+    },
+    todaySubHeader: {
+      paddingHorizontal: 0,
+      paddingTop: 8,
+      paddingBottom: 20,
+    },
+    todayDate: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: themeColors.accentPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 1.5,
+      marginBottom: 6,
+    },
+    todayGreeting: {
+      fontFamily: 'PlayfairDisplay_400Regular',
+      fontSize: 28,
+      color: themeColors.text,
+    },
+    todayGreetingName: {
+      fontFamily: 'PlayfairDisplay_500Medium_Italic',
+      color: themeColors.accentPrimary,
+    },
+    greetingContainer: {
+      backgroundColor: themeColors.surfaceSecondary,
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      marginBottom: 16,
+    },
+    greetingDate: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: themeColors.accentPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 1.5,
+      marginBottom: 4,
+    },
+    greetingText: {
+      fontFamily: 'PlayfairDisplay_400Regular',
+      fontSize: 26,
+      color: themeColors.text,
+    },
+    greetingName: {
+      fontFamily: 'PlayfairDisplay_500Medium_Italic',
+      color: themeColors.accentPrimary,
+    },
+    weatherCard: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    weatherLocation: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    weatherTemp: {
+      fontFamily: 'PlayfairDisplay_400Regular',
+      fontSize: 56,
+      fontWeight: '200',
+      color: themeColors.text,
+      lineHeight: 60,
+    },
+    weatherTempUnit: {
+      fontSize: 24,
+      fontWeight: '300',
+      color: themeColors.textSecondary,
+      marginTop: 4,
+    },
+    weatherIconCircle: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(180, 83, 9, 0.1)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
+    weatherConditionItalic: {
+      fontFamily: 'PlayfairDisplay_400Regular_Italic',
+      fontSize: 16,
+      color: themeColors.text,
+      marginBottom: 4,
+    },
+    weatherHighLow: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    weatherToggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 20,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: themeColors.border,
+    },
+    weatherToggleLabel: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    forecastDayCard: {
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: themeColors.surfaceSecondary,
+      borderRadius: 12,
+      minWidth: 80,
+    },
+    forecastDayName: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: themeColors.textSecondary,
+    },
+    forecastDayTemp: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    todayWeatherEmpty: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 24,
+    },
+    todayWeatherEmptyText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: themeColors.textSecondary,
+      marginTop: 12,
+    },
+    todayWeatherEmptySubtext: {
+      fontSize: 14,
+      color: themeColors.textMuted,
+      marginTop: 4,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontFamily: 'PlayfairDisplay_400Regular_Italic',
+      fontSize: 22,
+      color: themeColors.text,
+    },
+    sectionAction: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: themeColors.accentPrimary,
+    },
+    activityCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: themeColors.surface,
+      borderRadius: 14,
+      padding: 16,
+      marginHorizontal: 0,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    activityTimeBadge: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 50,
+    },
+    activityTime: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    activityPeriod: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: themeColors.textMuted,
+      textTransform: 'uppercase',
+    },
+    activityDivider: {
+      width: 1,
+      height: 36,
+      backgroundColor: themeColors.border,
+      marginHorizontal: 16,
+    },
+    activityInfo: {
+      flex: 1,
+    },
+    activityTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: themeColors.text,
+      marginBottom: 2,
+    },
+    activityLocation: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    activityDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginLeft: 12,
+    },
+    todayEmptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 32,
+      backgroundColor: themeColors.surfaceSecondary,
+      borderRadius: 14,
+    },
+    todayEmptyText: {
+      fontSize: 15,
+      color: themeColors.textSecondary,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: themeColors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: themeColors.surface,
+    },
+    checkboxCompleted: {
+      backgroundColor: themeColors.accentPrimary,
+      borderColor: themeColors.accentPrimary,
+    },
+    completedText: {
+      textDecorationLine: 'line-through',
+      color: themeColors.textMuted,
+    },
+    weatherDesc: {
+      fontSize: 16,
+      color: themeColors.text,
+      fontStyle: 'italic',
+    },
+    // Filter Pills
+    filterPill: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: themeColors.surface,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      marginRight: 8,
+    },
+    filterPillActive: {
+      backgroundColor: themeColors.accentPrimary,
+      borderColor: themeColors.accentPrimary,
+    },
+    filterPillText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: themeColors.text,
+    },
+    filterPillTextActive: {
+      color: '#fff',
+    },
+    filterPills: {
+      flexDirection: 'row',
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    // To Do Screen
+    todoSubHeader: {
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 16,
+    },
+    todoMainTitle: {
+      fontFamily: 'PlayfairDisplay_400Regular',
+      fontSize: 28,
+      color: themeColors.text,
+    },
+    todoMainTitleAccent: {
+      fontFamily: 'PlayfairDisplay_500Medium_Italic',
+      color: themeColors.accentPrimary,
+    },
+    todoToggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 24,
+      marginBottom: 8,
+    },
+    todoToggle: {
+      flexDirection: 'row',
+      backgroundColor: themeColors.surfaceSecondary,
+      borderRadius: 8,
+      padding: 4,
+    },
+    todoToggleItem: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 6,
+    },
+    todoToggleItemActive: {
+      backgroundColor: themeColors.surface,
+    },
+    todoToggleText: {
+      fontSize: 12,
+      fontWeight: '600',
+      letterSpacing: 1,
+      color: themeColors.textMuted,
+    },
+    todoToggleTextActive: {
+      color: themeColors.accentPrimary,
+    },
+    mapToggleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    todoSectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+    },
+    todoSectionTitle: {
+      fontFamily: 'PlayfairDisplay_400Regular_Italic',
+      fontSize: 18,
+      color: themeColors.text,
+    },
+    taskCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: themeColors.surface,
+      borderRadius: 14,
+      padding: 16,
+      marginHorizontal: 0,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    swipeDeleteAction: {
+      backgroundColor: '#ef4444',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: 80,
+      height: '100%',
+      borderRadius: 14,
+      marginBottom: 10,
+      marginLeft: 8,
+    },
+    taskInfo: {
+      flex: 1,
+      marginLeft: 14,
+    },
+    taskMeta: {
+      fontSize: 13,
+      color: themeColors.textSecondary,
+      marginTop: 4,
+    },
+    taskTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: themeColors.text,
+    },
+    // Ideas Screen
+    ideasSubheader: {
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 16,
+    },
+    ideasSubheaderTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+    },
+    ideasSubheaderTitleRegular: {
+      fontFamily: 'PlayfairDisplay_400Regular',
+      fontSize: 28,
+      color: themeColors.text,
+    },
+    ideasSubheaderTitleItalic: {
+      fontFamily: 'PlayfairDisplay_500Medium_Italic',
+      fontSize: 28,
+      color: themeColors.accentPrimary,
+    },
+    ideaFilterScroll: {
+      flexGrow: 0,
+      flexShrink: 0,
+      marginBottom: 16,
+      maxHeight: 60,
+    },
+    ideaCard: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 18,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      overflow: 'hidden',
+    },
+    ideaTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: themeColors.text,
+      flex: 1,
+      flexShrink: 1,
+      marginRight: 12,
+    },
+    ideaDescription: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+      lineHeight: 20,
+    },
+    ideaCardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 8,
+      overflow: 'hidden',
+    },
+    ideaCategoryBadge: {
+      backgroundColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(180, 83, 9, 0.1)',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 6,
+      flexShrink: 0,
+    },
+    ideaCategoryBadgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: themeColors.accentPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    ideaCardFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 12,
+    },
+    ideaCardDate: {
+      fontSize: 12,
+      color: themeColors.textMuted,
+    },
+    ideaCardActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    // Gifts Screen
+    giftSubHeader: {
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 16,
+    },
+    giftMainTitle: {
+      fontFamily: 'PlayfairDisplay_400Regular',
+      fontSize: 28,
+      color: themeColors.text,
+    },
+    giftMainTitleAccent: {
+      fontFamily: 'PlayfairDisplay_500Medium_Italic',
+      color: themeColors.accentPrimary,
+    },
+    giftFilterPills: {
+      flexDirection: 'row',
+      paddingHorizontal: 24,
+      marginBottom: 16,
+      gap: 8,
+    },
+    giftPeopleScroll: {
+      flex: 1,
+      paddingHorizontal: 24,
+    },
+    newPersonCard: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 18,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    newPersonCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    newPersonAvatarText: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    newPersonInfo: {
+      flex: 1,
+      marginLeft: 14,
+    },
+    newPersonName: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    newPersonOccasion: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+      marginTop: 2,
+    },
+    newGiftIdeasLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: themeColors.textMuted,
+      letterSpacing: 1,
+      marginBottom: 10,
+    },
+    newGiftItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+    },
+    newGiftItemText: {
+      fontSize: 15,
+      color: themeColors.text,
+      flex: 1,
+    },
+    newGiftItemPrice: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: themeColors.accentPrimary,
+    },
+    wishlistItemInfo: {
+      flex: 1,
+    },
+    // Calendar Screen
+    calSubHeader: {
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 16,
+    },
+    calMainTitle: {
+      fontFamily: 'PlayfairDisplay_400Regular',
+      fontSize: 28,
+      color: themeColors.text,
+    },
+    calMainTitleAccent: {
+      fontFamily: 'PlayfairDisplay_500Medium_Italic',
+      color: themeColors.accentPrimary,
+    },
+    calMonthNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 24,
+      marginBottom: 16,
+    },
+    calNavButton: {
+      padding: 8,
+    },
+    calMonthLabel: {
+      fontFamily: 'PlayfairDisplay_500Medium',
+      fontSize: 20,
+      color: themeColors.text,
+    },
+    calGridContainer: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      marginHorizontal: 24,
+      padding: 16,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    calGridRow: {
+      flexDirection: 'row',
+    },
+    calGridCell: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    calGridDayName: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: themeColors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    calGridDotRow: {
+      flexDirection: 'row',
+      gap: 2,
+      marginTop: 4,
+    },
+    calGridDayWrapper: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    calGridDayTodayOutline: {
+      borderWidth: 2,
+      borderColor: themeColors.accentPrimary,
+    },
+    calGridDaySelected: {
+      backgroundColor: themeColors.accentPrimary,
+    },
+    calGridDayNumber: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: themeColors.text,
+    },
+    calGridDayNumberMuted: {
+      color: themeColors.textMuted,
+    },
+    calGridDayNumberToday: {
+      color: themeColors.accentPrimary,
+      fontWeight: '600',
+    },
+    calGridDayNumberSelected: {
+      color: '#fff',
+      fontWeight: '600',
+    },
+    calUpcomingTitle: {
+      fontFamily: 'PlayfairDisplay_400Regular_Italic',
+      fontSize: 20,
+      color: themeColors.text,
+      paddingHorizontal: 24,
+      marginBottom: 16,
+    },
+    calEventsScroll: {
+      paddingHorizontal: 24,
+    },
+    calEventCard: {
+      flexDirection: 'row',
+      backgroundColor: themeColors.surface,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    calEventDateBox: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingRight: 16,
+      borderRightWidth: 1,
+      borderRightColor: themeColors.border,
+      minWidth: 60,
+    },
+    calEventDateNum: {
+      fontSize: 24,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    calEventDateMonth: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: themeColors.textSecondary,
+      textTransform: 'uppercase',
+    },
+    calEventInfo: {
+      flex: 1,
+      paddingLeft: 16,
+      justifyContent: 'center',
+    },
+    calEventTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: themeColors.text,
+      marginBottom: 4,
+    },
+    calEventMeta: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    // Food Screen
+    foodSubHeader: {
+      flexGrow: 0,
+      flexShrink: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 16,
+    },
+    foodToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    viewToggleIcons: {
+      flexDirection: 'row',
+      backgroundColor: themeColors.surface,
+      borderRadius: 10,
+      padding: 4,
+      gap: 4,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    viewToggleIconBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'transparent',
+    },
+    viewToggleIconBtnActive: {
+      backgroundColor: themeColors.accentPrimary,
+    },
+    foodToggleWord: {
+      fontFamily: 'PlayfairDisplay_500Medium_Italic',
+      fontSize: 28,
+      color: themeColors.accentPrimary,
+    },
+    foodToggleSeparator: {
+      fontSize: 24,
+      color: themeColors.textMuted,
+      marginHorizontal: 12,
+    },
+    foodSearchBar: {
+      flexGrow: 0,
+      flexShrink: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: themeColors.surface,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      marginHorizontal: 24,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    foodSearchInput: {
+      flex: 1,
+      paddingVertical: 14,
+      paddingHorizontal: 10,
+      fontSize: 16,
+      color: themeColors.text,
+    },
+    categoryScroll: {
+      flexGrow: 0,
+      flexShrink: 0,
+      paddingHorizontal: 24,
+      marginBottom: 16,
+      maxHeight: 50,
+    },
+    newRecipeCard: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      overflow: 'hidden',
+    },
+    newRecipeCardContent: {
+      padding: 16,
+    },
+    newRecipeTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: themeColors.text,
+      marginBottom: 6,
+    },
+    newRecipeDescription: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+      lineHeight: 20,
+      marginBottom: 12,
+    },
+    newRecipeMetaRow: {
+      flexDirection: 'row',
+      gap: 16,
+    },
+    newRecipeMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    newRecipeMetaText: {
+      fontSize: 13,
+      color: themeColors.textSecondary,
+    },
+    recipeTagsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginTop: 12,
+    },
+    recipeTagChip: {
+      backgroundColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(180, 83, 9, 0.1)',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
+    recipeTagChipText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: themeColors.accentPrimary,
+    },
+    recipeLoadingBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: themeColors.surfaceSecondary,
+      paddingVertical: 12,
+      marginHorizontal: 24,
+      borderRadius: 12,
+      marginBottom: 16,
+      gap: 10,
+    },
+    recipeLoadingText: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    restaurantCard: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    restaurantInfo: {
+      flex: 1,
+    },
+    restaurantName: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: themeColors.text,
+      marginBottom: 4,
+    },
+    restaurantCuisine: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+      marginBottom: 6,
+    },
+    restaurantRating: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginBottom: 6,
+    },
+    restaurantRatingText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: themeColors.text,
+    },
+    restaurantDetails: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    restaurantDetail: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    restaurantDetailText: {
+      fontSize: 13,
+      color: themeColors.textSecondary,
+    },
+    viewToggle: {
+      flexDirection: 'row',
+      flexGrow: 0,
+      flexShrink: 0,
+      paddingHorizontal: 24,
+      gap: 8,
+      marginBottom: 16,
+    },
+    // Groceries Screen
+    groceriesPageHeader: {
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 16,
+    },
+    shopModeSelector: {
+      flexDirection: 'row',
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 12,
+      marginBottom: 8,
+      gap: 12,
+      backgroundColor: 'transparent',
+    },
+    shopModeButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: themeColors.surface,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    shopModeButtonActive: {
+      backgroundColor: themeColors.accentPrimary,
+      borderColor: themeColors.accentPrimary,
+    },
+    shopModeButtonText: {
+      fontSize: 14,
+      color: themeColors.text,
+    },
+    shopModeButtonTextActive: {
+      color: '#ffffff',
+    },
+    frequentItemsContainer: {
+      paddingHorizontal: 24,
+      marginBottom: 20,
+    },
+    frequentItemsLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: themeColors.textMuted,
+      marginBottom: 10,
+      letterSpacing: 0.5,
+    },
+    frequentItemChip: {
+      backgroundColor: themeColors.surface,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    frequentItemChipText: {
+      fontSize: 14,
+      color: themeColors.text,
+    },
+    groceryCategorySection: {
+      marginBottom: 16,
+    },
+    groceryCategoryHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: themeColors.surfaceSecondary,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      marginHorizontal: 0,
+      borderRadius: 12,
+      marginBottom: 8,
+    },
+    groceryCategoryHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    groceryCategoryEmoji: {
+      fontSize: 20,
+    },
+    groceryCategoryTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    groceryCategoryCount: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+      marginLeft: 6,
+    },
+    groceryInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    groceryCard: {
+      backgroundColor: themeColors.surface,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      borderRadius: 16,
+      padding: 16,
+      marginHorizontal: 0,
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: theme === 'dark' ? 0.15 : 0.06,
+      shadowRadius: 12,
+      elevation: 2,
+    },
+    groceryCardCompleted: {
+      backgroundColor: theme === 'dark' ? themeColors.surfaceSecondary : '#f9fafb',
+      opacity: 0.7,
+    },
+    groceryCheckbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: themeColors.borderWarm,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+    },
+    groceryCheckboxChecked: {
+      backgroundColor: '#10b981',
+      borderColor: '#10b981',
+    },
+    groceryName: {
+      fontFamily: 'PlayfairDisplay_500Medium',
+      fontSize: 15,
+      color: themeColors.text,
+    },
+    groceryNameChecked: {
+      textDecorationLine: 'line-through',
+      color: themeColors.textMuted,
+    },
+    groceryItemPrice: {
+      fontFamily: 'SourceSans3_600SemiBold',
+      fontSize: 14,
+      color: theme === 'dark' ? '#fbbf24' : '#b45309',
+      marginLeft: 'auto',
+    },
+    // Empty State
+    emptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+      paddingHorizontal: 40,
+    },
+    emptyStateText: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: themeColors.textSecondary,
+      marginTop: 16,
+      textAlign: 'center',
+    },
+    emptyStateSubtext: {
+      fontSize: 14,
+      color: themeColors.textMuted,
+      marginTop: 8,
+      textAlign: 'center',
+    },
+    // Category Headers (Groceries)
+    categoryBox: {
+      backgroundColor: themeColors.surfaceSecondary,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    // Calendar
+    calendarContainer: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginHorizontal: 24,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    calendarHeader: {
+      color: themeColors.text,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    calendarDayText: {
+      color: themeColors.text,
+      fontSize: 14,
+    },
+    calendarDayTextMuted: {
+      color: themeColors.textMuted,
+    },
+    // Event Cards
+    eventCard: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    eventTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    eventTime: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    // Calendar Day Styles
+    calendarDay: {
+      width: '14.28%',
+      minHeight: 90,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      padding: 4,
+    },
+    calendarDayEmpty: {
+      width: '14.28%',
+      minHeight: 90,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    calendarMoreText: {
+      color: themeColors.textMuted,
+      fontSize: 8,
+      marginTop: 2,
+    },
+    // Compact Calendar Day Styles
+    calendarDayCompact: {
+      width: '13.28%',
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 8,
+      margin: '0.5%',
+      paddingVertical: 4,
+    },
+    calendarDayCompactToday: {
+      backgroundColor: themeColors.accentPrimary,
+    },
+    calendarDayCompactSelected: {
+      backgroundColor: themeColors.surface,
+      borderWidth: 2,
+      borderColor: themeColors.accentPrimary,
+    },
+    calendarDayCompactEmpty: {
+      width: '13.28%',
+      minHeight: 44,
+      margin: '0.5%',
+    },
+    calendarDayCompactText: {
+      color: themeColors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    calendarDayCompactTextToday: {
+      color: '#fff',
+      fontWeight: '600',
+    },
+    calendarDayCompactTextSelected: {
+      color: themeColors.text,
+      fontWeight: '600',
+    },
+    // Calendar Events Section
+    calendarEventsSection: {
+      flex: 1,
+      backgroundColor: themeColors.surfaceSecondary,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingTop: 16,
+    },
+    dayDetailsContainer: {
+      marginTop: 16,
+      backgroundColor: themeColors.surface,
+      borderRadius: 8,
+      padding: 16,
+      marginBottom: 20,
+    },
+    dayDetailsTitle: {
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+      fontSize: 18,
+      color: themeColors.text,
+    },
+    // Task/Todo Items
+    taskItem: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    taskText: {
+      fontSize: 16,
+      color: themeColors.text,
+      flex: 1,
+      marginLeft: 12,
+    },
+    taskTextCompleted: {
+      textDecorationLine: 'line-through',
+      color: themeColors.textMuted,
+    },
+    // Idea Cards
+    ideaCard: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    ideaTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: themeColors.text,
+      marginBottom: 4,
+    },
+    ideaDescription: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+      lineHeight: 20,
+    },
+    ideaMeta: {
+      fontSize: 12,
+      color: themeColors.textMuted,
+      marginTop: 8,
+    },
+    // Gift Person Cards
+    personCard: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    personName: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    personDetail: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    // Restaurant Cards
+    restaurantCard: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    restaurantName: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    restaurantCuisine: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
+    restaurantMeta: {
+      fontSize: 13,
+      color: themeColors.textMuted,
+    },
+    // Grocery Items
+    groceryItem: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    groceryText: {
+      fontSize: 16,
+      color: themeColors.text,
+      flex: 1,
+      marginLeft: 12,
+    },
+    // Modal/Form Styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: themeColors.background,
+    },
+    modalContent: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 16,
+      padding: 20,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: themeColors.text,
+      marginBottom: 16,
+    },
+    modalBackdrop: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    modalSubtitle: {
+      color: themeColors.textSecondary,
+      fontSize: 14,
+      marginBottom: 16,
+      fontWeight: '500',
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 16,
+    },
+    button: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    buttonCancel: {
+      backgroundColor: themeColors.surfaceSecondary,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    buttonCancelText: {
+      color: themeColors.text,
+      fontWeight: '600',
+      fontSize: 16,
+    },
+    buttonAdd: {
+      backgroundColor: themeColors.accentPrimary,
+    },
+    buttonText: {
+      color: '#fff',
+      fontWeight: '600',
+      fontSize: 16,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    errorText: {
+      color: '#F87171',
+      fontSize: 14,
+      marginTop: 8,
+    },
+    recipeTagsLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: themeColors.textSecondary,
+      marginBottom: 10,
+      marginTop: 4,
+    },
+    recipeTagsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 16,
+    },
+    recipeTagButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 20,
+      backgroundColor: themeColors.surfaceSecondary,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    recipeTagButtonActive: {
+      backgroundColor: themeColors.accentPrimary,
+      borderColor: themeColors.accentPrimary,
+    },
+    recipeTagButtonText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: themeColors.text,
+    },
+    recipeTagButtonTextActive: {
+      color: '#fff',
+    },
+    manualSectionHeader: {
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+      color: themeColors.text,
+      fontSize: 16,
+      marginTop: 24,
+      marginBottom: 8,
+    },
+    manualFieldLabel: {
+      color: themeColors.textSecondary,
+      fontSize: 13,
+      fontWeight: '500',
+      marginTop: 16,
+      marginBottom: 6,
+    },
+    // Person Profile Modal Styles
+    personProfileOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    personProfileBackdrop: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    personProfileContent: {
+      backgroundColor: themeColors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      maxHeight: '85%',
+      paddingHorizontal: 24,
+      paddingTop: 24,
+    },
+    personProfileHeader: {
+      alignItems: 'center',
+      marginBottom: 24,
+      position: 'relative',
+    },
+    personProfileCloseBtn: {
+      position: 'absolute',
+      right: 0,
+      top: 0,
+      padding: 4,
+    },
+    personProfileAvatar: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    personProfileAvatarText: {
+      fontSize: 32,
+      fontWeight: '600',
+      color: '#ffffff',
+    },
+    personProfileName: {
+      fontSize: 24,
+      fontWeight: '600',
+      color: themeColors.text,
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+    },
+    personProfileSection: {
+      marginBottom: 24,
+    },
+    personProfileSectionTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: themeColors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: 12,
+    },
+    personProfileDatePicker: {
+      backgroundColor: themeColors.inputBg,
+      borderRadius: 12,
+      padding: 8,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    personProfileSizeRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    personProfileSizeItem: {
+      flex: 1,
+    },
+    personProfileSizeLabel: {
+      fontSize: 13,
+      color: themeColors.textSecondary,
+      marginBottom: 6,
+    },
+    personProfileSizeInput: {
+      backgroundColor: themeColors.inputBg,
+      borderRadius: 10,
+      padding: 14,
+      fontSize: 16,
+      color: themeColors.text,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    personProfileGiftHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    personProfileGiftCount: {
+      fontSize: 13,
+      color: themeColors.textMuted,
+    },
+    personProfileEmptyText: {
+      fontSize: 14,
+      color: themeColors.textMuted,
+      textAlign: 'center',
+      paddingVertical: 20,
+    },
+    personProfileGiftItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: themeColors.surfaceSecondary,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      gap: 12,
+    },
+    personProfileGiftInfo: {
+      flex: 1,
+    },
+    personProfileGiftName: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: themeColors.text,
+    },
+    personProfileGiftNotes: {
+      fontSize: 13,
+      color: themeColors.textSecondary,
+      marginTop: 2,
+    },
+    personProfileGiftPrice: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#10B981',
+    },
+    personProfileSaveBtn: {
+      backgroundColor: themeColors.accentPrimary,
+      borderRadius: 12,
+      paddingVertical: 16,
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    personProfileSaveBtnText: {
+      color: '#ffffff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    personProfileAddGiftBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fff7ed',
+      borderRadius: 12,
+      paddingVertical: 14,
+      gap: 8,
+      borderWidth: 1,
+      borderColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : '#fed7aa',
+    },
+    personProfileAddGiftText: {
+      color: themeColors.accentPrimary,
+      fontSize: 15,
+      fontWeight: '500',
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: themeColors.textSecondary,
+      marginBottom: 8,
+    },
+    textInput: {
+      backgroundColor: themeColors.inputBg,
+      borderWidth: 1,
+      borderColor: themeColors.inputBorder,
+      borderRadius: 12,
+      padding: 14,
+      fontSize: 16,
+      color: themeColors.text,
+    },
+    // Form Modal Styles
+    formModalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    formModalBackdrop: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    formModalContent: {
+      backgroundColor: themeColors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      maxHeight: '90%',
+      paddingBottom: 40,
+    },
+    formModalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingTop: 24,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+    },
+    formModalForm: {
+      padding: 24,
+    },
+    formInput: {
+      backgroundColor: themeColors.inputBg,
+      borderWidth: 1,
+      borderColor: themeColors.inputBorder,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      color: themeColors.text,
+      marginBottom: 16,
+    },
+    formInputText: {
+      color: themeColors.text,
+      fontSize: 16,
+    },
+    formInputPlaceholder: {
+      color: themeColors.textMuted,
+      fontSize: 16,
+    },
+    formLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: themeColors.textSecondary,
+      marginBottom: 8,
+      marginTop: 8,
+    },
+    formSuggestionsContainer: {
+      backgroundColor: themeColors.surface,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      borderRadius: 8,
+      marginTop: -12,
+      marginBottom: 16,
+      maxHeight: 200,
+    },
+    formSuggestionItem: {
+      padding: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+    },
+    formSuggestionText: {
+      color: themeColors.text,
+      fontSize: 14,
+    },
+    formButton: {
+      backgroundColor: themeColors.accentPrimary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 16,
+    },
+    formButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    // Activity Detail Modal Styles
+    activityDetailModal: {
+      maxHeight: '85%',
+      backgroundColor: themeColors.surface,
+      borderRadius: 24,
+      marginHorizontal: 16,
+      marginBottom: 20,
+      overflow: 'hidden',
+    },
+    activityDetailHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      padding: 20,
+      paddingBottom: 12,
+    },
+    activityDetailActionBtn: {
+      padding: 8,
+    },
+    activityDetailActionSheet: {
+      backgroundColor: theme === 'dark' ? '#374151' : '#1f2937',
+      marginHorizontal: 20,
+      marginBottom: 12,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    activityDetailActionSheetItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 14,
+    },
+    activityDetailActionSheetText: {
+      color: themeColors.text,
+      fontSize: 15,
+      fontWeight: '500',
+    },
+    activityDetailContent: {
+      paddingHorizontal: 20,
+    },
+    activityDetailTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: themeColors.text,
+      marginBottom: 12,
+    },
+    activityDetailInfoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 12,
+    },
+    activityDetailInfoText: {
+      fontSize: 15,
+      color: themeColors.textSecondary,
+    },
+    activityDetailNotes: {
+      fontSize: 15,
+      color: themeColors.textSecondary,
+      lineHeight: 22,
+      marginTop: 12,
+    },
+    activityDetailInfoCard: {
+      backgroundColor: themeColors.surfaceSecondary,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 16,
+    },
+    activityDetailInfoLabel: {
+      fontSize: 12,
+      color: themeColors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 4,
+    },
+    activityDetailInfoValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: themeColors.text,
+    },
+    activityDetailLocationCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: themeColors.surfaceSecondary,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 12,
+      gap: 12,
+    },
+    activityDetailLocationLabel: {
+      fontSize: 12,
+      color: themeColors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 2,
+    },
+    activityDetailLocationAddress: {
+      fontSize: 15,
+      color: themeColors.text,
+      fontWeight: '500',
+    },
+    // Recipe Modal Styles
+    recipeDetailModal: {
+      maxHeight: '90%',
+      marginHorizontal: 16,
+      marginTop: 'auto',
+      marginBottom: 16,
+      backgroundColor: themeColors.surface,
+      borderRadius: 24,
+      padding: 24,
+    },
+    recipeDetailHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 16,
+    },
+    recipeDetailTitle: {
+      flex: 1,
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+      fontSize: 22,
+      color: themeColors.text,
+      marginRight: 12,
+    },
+    recipeDetailHeaderActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    recipeDetailActionButton: {
+      padding: 8,
+    },
+    recipeDetailActionSheet: {
+      backgroundColor: theme === 'dark' ? '#374151' : '#1f2937',
+      borderRadius: 12,
+      marginBottom: 16,
+      overflow: 'hidden',
+    },
+    recipeDetailActionSheetItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 14,
+    },
+    recipeDetailActionSheetText: {
+      color: '#fff',
+      fontSize: 15,
+      fontWeight: '500',
+    },
+    recipeDetailActionSheetItemSecondary: {
+      justifyContent: 'center',
+      borderTopWidth: 1,
+      borderTopColor: theme === 'dark' ? '#4b5563' : '#374151',
+    },
+    recipeDetailActionSheetSecondaryText: {
+      color: '#9ca3af',
+      fontSize: 15,
+    },
+    recipeDescription: {
+      color: themeColors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      marginBottom: 12,
+    },
+    recipeSectionTitle: {
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+      color: themeColors.text,
+      fontSize: 16,
+      marginTop: 12,
+      marginBottom: 8,
+    },
+    recipeListText: {
+      flex: 1,
+      color: themeColors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    recipeEmptyText: {
+      color: themeColors.textMuted,
+      fontSize: 14,
+    },
+    recipeNotesText: {
+      color: themeColors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    recipeSourceDetail: {
+      fontSize: 12,
+      color: themeColors.textMuted,
+      marginBottom: 12,
+    },
+    // Restaurant Modal Styles
+    restaurantModalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    restaurantModalContent: {
+      backgroundColor: themeColors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      height: '95%',
+    },
+    restaurantDetailsSection: {
+      padding: 24,
+    },
+    restaurantDetailsLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: themeColors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 6,
+    },
+    restaurantDetailsValue: {
+      fontSize: 16,
+      color: themeColors.text,
+      lineHeight: 22,
+    },
+    restaurantInfoText: {
+      fontSize: 14,
+      color: themeColors.textSecondary,
+    },
   });
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaView style={dynamicStyles.safeArea}>
       <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} />
-      <View style={styles.appHeader}>
-        <View style={styles.logoContainer}>
-          <View style={styles.logoIcon}>
+      <View style={dynamicStyles.appHeader}>
+        <View style={dynamicStyles.logoContainer}>
+          <View style={dynamicStyles.logoIcon}>
             <Home size={20} color="#fff" />
           </View>
-          <Text style={styles.logoText}>Life Organizer</Text>
+          <Text style={dynamicStyles.logoText}>Life Organizer</Text>
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.avatarButton} onPress={() => setShowProfile(true)}>
-            <Text style={styles.avatarText}>{currentUserName?.[0]?.toUpperCase() || 'A'}</Text>
+        <View style={dynamicStyles.headerRight}>
+          <TouchableOpacity style={dynamicStyles.avatarButton} onPress={() => setShowProfile(true)}>
+            <Text style={dynamicStyles.avatarText}>{currentUserName?.[0]?.toUpperCase() || 'A'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettings(true)}>
-            <Settings size={20} color="#6b7280" />
+          <TouchableOpacity style={dynamicStyles.settingsButton} onPress={() => setShowSettings(true)}>
+            <Settings size={20} color={themeColors.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -7302,8 +9989,8 @@ export default function App() {
                   <View style={styles.itemContent}>
                     {!isActivity && (
                       <View style={styles.itemTitleRow}>
-                        <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleComplete(item.id, 'items'); }}>
-                          <View style={dynamicStyles.checkbox}>
+                        <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleComplete(item.id, 'items'); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                          <View style={[dynamicStyles.checkbox, item.completed && dynamicStyles.checkboxCompleted]}>
                             {item.completed && <Check size={16} color="#fff" />}
                           </View>
                         </TouchableOpacity>
@@ -7699,8 +10386,8 @@ export default function App() {
                 </View>
                 <View style={styles.itemContent}>
                   <View style={styles.itemTitleRow}>
-                    <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleComplete(item.id, 'items'); }}>
-                      <View style={dynamicStyles.checkbox}>
+                    <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleComplete(item.id, 'items'); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <View style={[dynamicStyles.checkbox, item.completed && dynamicStyles.checkboxCompleted]}>
                         {item.completed && <Check size={16} color="#fff" />}
                       </View>
                     </TouchableOpacity>
@@ -8027,55 +10714,135 @@ export default function App() {
 
 {/* Old todo viewModeToggle removed - new UI handles this */}
 {activeTab === 'groceries' && (
-  <View style={styles.groceriesPageHeader}>
-    <View style={styles.ideasSubheaderTitleRow}>
-      <Text style={styles.ideasSubheaderTitleRegular}>Your </Text>
-      <Text style={styles.ideasSubheaderTitleItalic}>Groceries</Text>
+  <View style={dynamicStyles.groceriesPageHeader}>
+    <View style={dynamicStyles.ideasSubheaderTitleRow}>
+      <Text style={dynamicStyles.ideasSubheaderTitleRegular}>Your </Text>
+      <Text style={dynamicStyles.ideasSubheaderTitleItalic}>Groceries</Text>
     </View>
   </View>
 )}
 {activeTab === 'ideas' && (
   <>
-    <View style={styles.ideasSubheader}>
-      <View style={styles.ideasSubheaderTitleRow}>
-        <Text style={styles.ideasSubheaderTitleRegular}>Your </Text>
-        <Text style={styles.ideasSubheaderTitleItalic}>Ideas</Text>
+    <View style={dynamicStyles.ideasSubheader}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        <View style={dynamicStyles.ideasSubheaderTitleRow}>
+          <Text style={dynamicStyles.ideasSubheaderTitleRegular}>Your </Text>
+          <Text style={dynamicStyles.ideasSubheaderTitleItalic}>Ideas</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {/* Sort dropdown */}
+          <TouchableOpacity
+            onPress={() => {
+              const nextSort = ideaSortMode === 'recent' ? 'oldest' : ideaSortMode === 'oldest' ? 'grouped' : 'recent';
+              setIdeaSortMode(nextSort);
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 }}
+          >
+            <SlidersHorizontal size={16} color={themeColors.textSecondary} />
+            <Text style={{ marginLeft: 4, fontSize: 12, color: themeColors.textSecondary }}>
+              {ideaSortMode === 'recent' ? 'Recent' : ideaSortMode === 'oldest' ? 'Oldest' : 'Grouped'}
+            </Text>
+          </TouchableOpacity>
+          {/* Tag Manager button */}
+          <TouchableOpacity
+            onPress={() => setShowTagManager(true)}
+            style={{ padding: 8 }}
+          >
+            <Tag size={20} color={themeColors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
+    {/* Scope filters */}
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={styles.ideaFilterScroll}
+      style={dynamicStyles.ideaFilterScroll}
       contentContainerStyle={styles.ideaFilterScrollContent}
     >
       <TouchableOpacity
-        style={[styles.ideaFilterChip, ideaFilter === 'all' && styles.ideaFilterChipActive]}
+        style={[dynamicStyles.filterPill, ideaFilter === 'all' && dynamicStyles.filterPillActive]}
         onPress={() => setIdeaFilter('all')}
         activeOpacity={0.7}
       >
-        <Text style={[styles.ideaFilterChipText, ideaFilter === 'all' && styles.ideaFilterChipTextActive]}>
+        <Text style={[dynamicStyles.filterPillText, ideaFilter === 'all' && dynamicStyles.filterPillTextActive]}>
           All
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.ideaFilterChip, ideaFilter === 'personal' && styles.ideaFilterChipActive]}
+        style={[dynamicStyles.filterPill, ideaFilter === 'personal' && dynamicStyles.filterPillActive]}
         onPress={() => setIdeaFilter('personal')}
         activeOpacity={0.7}
       >
-        <Text style={[styles.ideaFilterChipText, ideaFilter === 'personal' && styles.ideaFilterChipTextActive]}>
+        <Text style={[dynamicStyles.filterPillText, ideaFilter === 'personal' && dynamicStyles.filterPillTextActive]}>
           Personal
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.ideaFilterChip, ideaFilter === 'household' && styles.ideaFilterChipActive]}
+        style={[dynamicStyles.filterPill, ideaFilter === 'household' && dynamicStyles.filterPillActive]}
         onPress={() => setIdeaFilter('household')}
         activeOpacity={0.7}
       >
-        <Text style={[styles.ideaFilterChipText, ideaFilter === 'household' && styles.ideaFilterChipTextActive]}>
+        <Text style={[dynamicStyles.filterPillText, ideaFilter === 'household' && dynamicStyles.filterPillTextActive]}>
           Household
         </Text>
       </TouchableOpacity>
     </ScrollView>
+    {/* Tag filters */}
+    {ideaTags.length > 0 && (
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 12, paddingHorizontal: 16 }}>
+        {ideaTags.map((tag) => {
+          const isSelected = selectedTagFilters.includes(tag.id);
+          return (
+            <TouchableOpacity
+              key={tag.id}
+              onPress={() => {
+                if (isSelected) {
+                  setSelectedTagFilters(selectedTagFilters.filter(id => id !== tag.id));
+                } else {
+                  setSelectedTagFilters([...selectedTagFilters, tag.id]);
+                }
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 12,
+                backgroundColor: isSelected ? tag.color : 'transparent',
+                borderWidth: 1,
+                borderColor: isSelected ? tag.color : themeColors.border,
+              }}
+            >
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: isSelected ? '#fff' : tag.color,
+                  marginRight: 5,
+                }}
+              />
+              <Text style={{ fontSize: 12, color: isSelected ? '#fff' : themeColors.textSecondary }}>
+                {tag.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+        {selectedTagFilters.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setSelectedTagFilters([])}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 12,
+            }}
+          >
+            <Text style={{ fontSize: 12, color: themeColors.textMuted }}>Clear</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    )}
   </>
 )}
       {renderContent()}
@@ -8111,19 +10878,35 @@ export default function App() {
               </View>
             </View>
           )}
-          <TouchableOpacity
+          <Pressable
             style={styles.fab}
-            onPress={handleAddClick}
+            onPress={() => {
+              if (!isVoiceRecording) {
+                handleAddClick();
+              }
+            }}
             onLongPress={() => {
               if (activeTab === 'groceries') {
                 setShowGroceryQuickActions((prev) => !prev);
+              } else if (activeTab === 'ideas') {
+                startVoiceRecording();
+              }
+            }}
+            onPressOut={() => {
+              if (isVoiceRecording) {
+                stopVoiceRecording();
               }
             }}
             delayLongPress={300}
-            activeOpacity={0.9}
           >
-            <Plus size={24} color="#fff" />
-          </TouchableOpacity>
+            {isVoiceRecording ? (
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <Mic size={24} color="#fff" />
+              </Animated.View>
+            ) : (
+              <Plus size={24} color="#fff" />
+            )}
+          </Pressable>
         </>
       )}
 
@@ -8135,10 +10918,10 @@ export default function App() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
+          style={dynamicStyles.formModalOverlay}
         >
           <TouchableOpacity
-            style={styles.modalBackdrop}
+            style={dynamicStyles.formModalBackdrop}
             activeOpacity={1}
             onPress={() => {
               setShowAddForm(false);
@@ -8147,9 +10930,9 @@ export default function App() {
               setAddressSuggestions([]);
             }}
           />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{isEditMode ? 'Edit' : 'Add'} {addItemType === 'activities' ? 'Activity' : addItemType === 'gifts' ? 'Gift Idea' : 'Item'}</Text>
+          <View style={dynamicStyles.formModalContent}>
+            <View style={dynamicStyles.formModalHeader}>
+              <Text style={dynamicStyles.modalTitle}>{isEditMode ? 'Edit' : 'Add'} {addItemType === 'activities' ? 'Activity' : addItemType === 'gifts' ? 'Gift Idea' : addItemType === 'wishlist' ? 'Wishlist Item' : addItemType === 'otherShop' ? 'Shopping Item' : 'Item'}</Text>
               <TouchableOpacity onPress={() => {
                 setShowAddForm(false);
                 setIsEditMode(false);
@@ -8158,39 +10941,39 @@ export default function App() {
                 setShowAddressSuggestions(false);
                 setAddressSuggestions([]);
               }}>
-                <X size={24} color="#9CA3AF" />
+                <X size={24} color={themeColors.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalForm} keyboardShouldPersistTaps="handled">
+            <ScrollView style={dynamicStyles.formModalForm} keyboardShouldPersistTaps="handled">
               {addItemType === 'gifts' ? (
                 <>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     placeholder="Person's name"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     value={newItem.person}
                     onChangeText={(text) => setNewItem({...newItem, person: text})}
                   />
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     placeholder="Gift idea"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     value={newItem.title}
                     onChangeText={(text) => setNewItem({...newItem, title: text})}
                   />
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     placeholder="Price (optional)"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     value={newItem.budget}
                     onChangeText={(text) => setNewItem({...newItem, budget: text})}
                     keyboardType="decimal-pad"
                   />
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     placeholder="Link (optional)"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     value={newItem.link}
                     onChangeText={(text) => setNewItem({...newItem, link: text})}
                     autoCapitalize="none"
@@ -8200,57 +10983,57 @@ export default function App() {
               ) : addItemType === 'activities' ? (
                 <>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     placeholder="Activity title"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     value={newItem.title}
                     onChangeText={(text) => setNewItem({...newItem, title: text})}
                   />
-                  
+
                   <TouchableOpacity
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     onPress={() => openDatePicker('activityDate')}
                   >
-                    <Text style={newItem.date ? styles.inputText : styles.inputPlaceholder}>
+                    <Text style={newItem.date ? dynamicStyles.formInputText : dynamicStyles.formInputPlaceholder}>
                       {newItem.date || 'Select date'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     onPress={openTimePicker}
                   >
-                    <Text style={newItem.time ? styles.inputText : styles.inputPlaceholder}>
+                    <Text style={newItem.time ? dynamicStyles.formInputText : dynamicStyles.formInputPlaceholder}>
                       {newItem.time ? formatTime(newItem.time) : 'Select time'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     onPress={(e) => {
                       e.stopPropagation();
                       openReminderPicker();
                     }}
                     activeOpacity={0.7}
                   >
-                    <Text style={newItem.reminderTime ? styles.inputText : styles.inputPlaceholder}>
+                    <Text style={newItem.reminderTime ? dynamicStyles.formInputText : dynamicStyles.formInputPlaceholder}>
                       {newItem.reminderTime ? `Set Reminder: ${newItem.reminderTime}` : 'Set Reminder'}
                     </Text>
                   </TouchableOpacity>
 
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     placeholder="Category (work, social, exercise, etc.)"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     value={newItem.activityCategory}
                     onChangeText={(text) => setNewItem({...newItem, activityCategory: text})}
                   />
 
                   <View style={styles.inputWithClear}>
                     <TextInput
-                      style={[styles.input, styles.inputWithButton]}
+                      style={[dynamicStyles.formInput, { flex: 1, marginBottom: 0, marginRight: 8 }]}
                       placeholder="Address (optional)"
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={themeColors.textMuted}
                       autoCorrect={false}
                       autoCapitalize="none"
                       value={newItem.activityAddress}
@@ -8264,79 +11047,171 @@ export default function App() {
                         style={styles.clearButton}
                         onPress={() => setNewItem({...newItem, activityAddress: '', activityLatitude: null, activityLongitude: null})}
                       >
-                        <X size={20} color="#9CA3AF" />
+                        <X size={20} color={themeColors.textMuted} />
                       </TouchableOpacity>
                     )}
                   </View>
 
                   {showAddressSuggestions && addressSuggestions.length > 0 && (
-                    <View style={styles.suggestionsContainer}>
+                    <View style={dynamicStyles.formSuggestionsContainer}>
                       <ScrollView style={styles.suggestionsList} keyboardShouldPersistTaps="always">
                         {addressSuggestions.map((suggestion, index) => (
                           <TouchableOpacity
                             key={index}
-                            style={styles.suggestionItem}
+                            style={dynamicStyles.formSuggestionItem}
                             onPress={() => handleAddressSelect(suggestion, true)}
                           >
-                            <MapPin size={16} color="#9CA3AF" />
-                            <Text style={styles.suggestionText}>{suggestion.name}</Text>
+                            <MapPin size={16} color={themeColors.textMuted} />
+                            <Text style={dynamicStyles.formSuggestionText}>{suggestion.name}</Text>
                           </TouchableOpacity>
                         ))}
                       </ScrollView>
                     </View>
                   )}
+
+                  <LocationReminderToggle
+                    enabled={newItem.locationReminder}
+                    onToggle={(value) => setNewItem({...newItem, locationReminder: value})}
+                    hasLocation={!!(newItem.activityLatitude && newItem.activityLongitude)}
+                    theme={theme}
+                  />
                 </>
               ) : (
                 <>
                 {addItemType === 'ideas' && (
-                  <View style={styles.todoTypeSelector}>
-                    <TouchableOpacity
-                      style={[styles.todoTypeButton, ideaScope === 'personal' && styles.todoTypeButtonActive]}
-                      onPress={() => setIdeaScope('personal')}
-                    >
-                      <Text style={[styles.todoTypeButtonText, ideaScope === 'personal' && styles.todoTypeButtonTextActive]}>Personal</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.todoTypeButton, ideaScope === 'household' && styles.todoTypeButtonActive]}
-                      onPress={() => setIdeaScope('household')}
-                    >
-                      <Text style={[styles.todoTypeButtonText, ideaScope === 'household' && styles.todoTypeButtonTextActive]}>Household</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <>
+                    <View style={dynamicStyles.shopModeSelector}>
+                      <TouchableOpacity
+                        style={[dynamicStyles.shopModeButton, ideaScope === 'personal' && dynamicStyles.shopModeButtonActive]}
+                        onPress={() => setIdeaScope('personal')}
+                      >
+                        <Text style={[dynamicStyles.shopModeButtonText, ideaScope === 'personal' && dynamicStyles.shopModeButtonTextActive]}>Personal</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[dynamicStyles.shopModeButton, ideaScope === 'household' && dynamicStyles.shopModeButtonActive]}
+                        onPress={() => setIdeaScope('household')}
+                      >
+                        <Text style={[dynamicStyles.shopModeButtonText, ideaScope === 'household' && dynamicStyles.shopModeButtonTextActive]}>Household</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {/* Tag picker for ideas */}
+                    <View style={{ marginBottom: 16 }}>
+                      {ideaTags.length === 0 ? (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setShowTagManager(true);
+                          }}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            paddingVertical: 12,
+                            paddingHorizontal: 16,
+                            borderRadius: 8,
+                            borderWidth: 1,
+                            borderColor: themeColors.border,
+                            borderStyle: 'dashed',
+                          }}
+                        >
+                          <Tag size={16} color={themeColors.textSecondary} />
+                          <Text style={{ fontSize: 14, color: themeColors.textSecondary, marginLeft: 8 }}>
+                            + Add tags to organize ideas
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                          {ideaTags.map((tag) => {
+                            const isSelected = newItem.tagIds?.includes(tag.id);
+                            return (
+                              <TouchableOpacity
+                                key={tag.id}
+                                onPress={() => {
+                                  const currentTags = newItem.tagIds || [];
+                                  if (isSelected) {
+                                    setNewItem({ ...newItem, tagIds: currentTags.filter(id => id !== tag.id) });
+                                  } else {
+                                    setNewItem({ ...newItem, tagIds: [...currentTags, tag.id] });
+                                  }
+                                }}
+                                style={{
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 6,
+                                  borderRadius: 16,
+                                  backgroundColor: isSelected ? tag.color : themeColors.cardBackground,
+                                  borderWidth: 1,
+                                  borderColor: isSelected ? tag.color : themeColors.border,
+                                }}
+                              >
+                                <View
+                                  style={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: isSelected ? '#fff' : tag.color,
+                                    marginRight: 6,
+                                  }}
+                                />
+                                <Text style={{ fontSize: 13, color: isSelected ? '#fff' : themeColors.text }}>
+                                  {tag.name}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                          <TouchableOpacity
+                            onPress={() => {
+                              setShowTagManager(true);
+                            }}
+                            style={{
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              borderRadius: 16,
+                              borderWidth: 1,
+                              borderColor: themeColors.border,
+                              borderStyle: 'dashed',
+                            }}
+                          >
+                            <Text style={{ fontSize: 13, color: themeColors.textSecondary }}>+ Add</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  </>
                 )}
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.formInput}
                   placeholder={addItemType === 'restaurants' ? "Restaurant name" : "Item title"}
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColors.textMuted}
                   value={newItem.title}
                   onChangeText={(text) => setNewItem({...newItem, title: text})}
                 />
-                
+
                 </>
               )}
 {addItemType === 'todo' && (
   <>
-    <View style={styles.todoTypeSelector}>
+    <View style={dynamicStyles.shopModeSelector}>
       <TouchableOpacity
-        style={[styles.todoTypeButton, todoItemType === 'task' && styles.todoTypeButtonActive]}
+        style={[dynamicStyles.shopModeButton, todoItemType === 'task' && dynamicStyles.shopModeButtonActive]}
         onPress={() => setTodoItemType('task')}
       >
-        <Text style={[styles.todoTypeButtonText, todoItemType === 'task' && styles.todoTypeButtonTextActive]}>
+        <Text style={[dynamicStyles.shopModeButtonText, todoItemType === 'task' && dynamicStyles.shopModeButtonTextActive]}>
           Task
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.todoTypeButton, todoItemType === 'activity' && styles.todoTypeButtonActive]}
+        style={[dynamicStyles.shopModeButton, todoItemType === 'activity' && dynamicStyles.shopModeButtonActive]}
         onPress={() => setTodoItemType('activity')}
       >
-        <Text style={[styles.todoTypeButtonText, todoItemType === 'activity' && styles.todoTypeButtonTextActive]}>
+        <Text style={[dynamicStyles.shopModeButtonText, todoItemType === 'activity' && dynamicStyles.shopModeButtonTextActive]}>
           Activity
         </Text>
       </TouchableOpacity>
     </View>
-    <View style={styles.todoTypeSelector}>
+    <View style={dynamicStyles.shopModeSelector}>
       <TouchableOpacity
-        style={[styles.todoTypeButton, (todoItemType === 'task' ? taskScope : activityScope) === 'personal' && styles.todoTypeButtonActive]}
+        style={[dynamicStyles.shopModeButton, (todoItemType === 'task' ? taskScope : activityScope) === 'personal' && dynamicStyles.shopModeButtonActive]}
         onPress={() => {
           if (todoItemType === 'task') {
             setTaskScope('personal');
@@ -8345,12 +11220,12 @@ export default function App() {
           }
         }}
       >
-        <Text style={[styles.todoTypeButtonText, (todoItemType === 'task' ? taskScope : activityScope) === 'personal' && styles.todoTypeButtonTextActive]}>
+        <Text style={[dynamicStyles.shopModeButtonText, (todoItemType === 'task' ? taskScope : activityScope) === 'personal' && dynamicStyles.shopModeButtonTextActive]}>
           Personal
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.todoTypeButton, (todoItemType === 'task' ? taskScope : activityScope) === 'household' && styles.todoTypeButtonActive]}
+        style={[dynamicStyles.shopModeButton, (todoItemType === 'task' ? taskScope : activityScope) === 'household' && dynamicStyles.shopModeButtonActive]}
         onPress={() => {
           if (todoItemType === 'task') {
             setTaskScope('household');
@@ -8359,7 +11234,7 @@ export default function App() {
           }
         }}
       >
-        <Text style={[styles.todoTypeButtonText, (todoItemType === 'task' ? taskScope : activityScope) === 'household' && styles.todoTypeButtonTextActive]}>
+        <Text style={[dynamicStyles.shopModeButtonText, (todoItemType === 'task' ? taskScope : activityScope) === 'household' && dynamicStyles.shopModeButtonTextActive]}>
           Household
         </Text>
       </TouchableOpacity>
@@ -8368,22 +11243,64 @@ export default function App() {
 )}
 {addItemType === 'groceries' && tabSettings.groceries?.showPrices !== false && (
   <TextInput
-    style={styles.input}
+    style={dynamicStyles.formInput}
     placeholder="Price (optional)"
-    placeholderTextColor="#9CA3AF"
+    placeholderTextColor={themeColors.textMuted}
     value={newItem.price}
     onChangeText={(text) => setNewItem({...newItem, price: text})}
     keyboardType="decimal-pad"
   />
 )}
 
+{addItemType === 'wishlist' && (
+  <>
+    <TextInput
+      style={dynamicStyles.formInput}
+      placeholder="Price (optional)"
+      placeholderTextColor={themeColors.textMuted}
+      value={newItem.price}
+      onChangeText={(text) => setNewItem({...newItem, price: text})}
+      keyboardType="decimal-pad"
+    />
+    <TextInput
+      style={dynamicStyles.formInput}
+      placeholder="Link (optional)"
+      placeholderTextColor={themeColors.textMuted}
+      value={newItem.link}
+      onChangeText={(text) => setNewItem({...newItem, link: text})}
+      autoCapitalize="none"
+      keyboardType="url"
+    />
+  </>
+)}
+
+{addItemType === 'otherShop' && (
+  <>
+    <TextInput
+      style={dynamicStyles.formInput}
+      placeholder="Store name (optional)"
+      placeholderTextColor={themeColors.textMuted}
+      value={newItem.notes}
+      onChangeText={(text) => setNewItem({...newItem, notes: text})}
+    />
+    <TextInput
+      style={dynamicStyles.formInput}
+      placeholder="Price (optional)"
+      placeholderTextColor={themeColors.textMuted}
+      value={newItem.price}
+      onChangeText={(text) => setNewItem({...newItem, price: text})}
+      keyboardType="decimal-pad"
+    />
+  </>
+)}
+
               {addItemType === 'restaurants' && (
                 <>
                   <View style={styles.inputWithClear}>
                     <TextInput
-                      style={[styles.input, styles.inputWithButton]}
+                      style={[dynamicStyles.formInput, { flex: 1, marginBottom: 0, marginRight: 8 }]}
                       placeholder="Address"
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={themeColors.textMuted}
                       autoCorrect={false}
                       autoCapitalize="none"
                       value={newItem.address}
@@ -8397,22 +11314,22 @@ export default function App() {
                         style={styles.clearButton}
                         onPress={() => setNewItem({...newItem, address: '', latitude: null, longitude: null})}
                       >
-                        <X size={20} color="#9CA3AF" />
+                        <X size={20} color={themeColors.textMuted} />
                       </TouchableOpacity>
                     )}
                   </View>
 
                   {showAddressSuggestions && addressSuggestions.length > 0 && (
-                    <View style={styles.suggestionsContainer}>
+                    <View style={dynamicStyles.formSuggestionsContainer}>
                       <ScrollView style={styles.suggestionsList} keyboardShouldPersistTaps="always">
                         {addressSuggestions.map((suggestion, index) => (
                           <TouchableOpacity
                             key={index}
-                            style={styles.suggestionItem}
+                            style={dynamicStyles.formSuggestionItem}
                             onPress={() => handleAddressSelect(suggestion, false)}
                           >
-                            <MapPin size={16} color="#9CA3AF" />
-                            <Text style={styles.suggestionText}>{suggestion.name}</Text>
+                            <MapPin size={16} color={themeColors.textMuted} />
+                            <Text style={dynamicStyles.formSuggestionText}>{suggestion.name}</Text>
                           </TouchableOpacity>
                         ))}
                       </ScrollView>
@@ -8420,18 +11337,25 @@ export default function App() {
                   )}
 
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     placeholder="Cuisine type"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     value={newItem.cuisine}
                     onChangeText={(text) => setNewItem({...newItem, cuisine: text})}
                   />
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     placeholder="Price range ($, $$, $$$, $$$$)"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     value={newItem.priceRange}
                     onChangeText={(text) => setNewItem({...newItem, priceRange: text})}
+                  />
+
+                  <LocationReminderToggle
+                    enabled={newItem.locationReminder}
+                    onToggle={(value) => setNewItem({...newItem, locationReminder: value})}
+                    hasLocation={!!(newItem.latitude && newItem.longitude)}
+                    theme={theme}
                   />
                 </>
               )}
@@ -8439,15 +11363,15 @@ export default function App() {
 {addItemType === 'todo' && todoItemType === 'task' && (
   <>
     <TouchableOpacity
-      style={styles.input}
+      style={dynamicStyles.formInput}
       onPress={() => openDatePicker('dueDate')}
     >
-      <Text style={newItem.dueDate ? styles.inputText : styles.inputPlaceholder}>
+      <Text style={newItem.dueDate ? dynamicStyles.formInputText : dynamicStyles.formInputPlaceholder}>
         {newItem.dueDate ? `Due: ${formatDate(newItem.dueDate)}` : 'Set due date (optional)'}
       </Text>
     </TouchableOpacity>
 
-    <Text style={styles.priorityLabel}>Priority</Text>
+    <Text style={dynamicStyles.formLabel}>Priority</Text>
     <View style={styles.priorityButtons}>
       {['low', 'medium', 'high', 'urgent'].map((priority) => (
         <TouchableOpacity
@@ -8470,9 +11394,9 @@ export default function App() {
     {/* ADD THIS - Address for tasks */}
     <View style={styles.inputWithClear}>
       <TextInput
-        style={[styles.input, styles.inputWithButton]}
+        style={[dynamicStyles.formInput, { flex: 1, marginBottom: 0, marginRight: 8 }]}
         placeholder="Address (optional)"
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor={themeColors.textMuted}
         autoCorrect={false}
         autoCapitalize="none"
         value={newItem.activityAddress}
@@ -8507,6 +11431,13 @@ export default function App() {
         </ScrollView>
       </View>
     )}
+
+    <LocationReminderToggle
+      enabled={newItem.locationReminder}
+      onToggle={(value) => setNewItem({...newItem, locationReminder: value})}
+      hasLocation={!!(newItem.activityLatitude && newItem.activityLongitude)}
+      theme={theme}
+    />
   </>
 )}
 {addItemType === 'todo' && todoItemType === 'activity' && (
@@ -8590,6 +11521,13 @@ export default function App() {
         </ScrollView>
       </View>
     )}
+
+    <LocationReminderToggle
+      enabled={newItem.locationReminder}
+      onToggle={(value) => setNewItem({...newItem, locationReminder: value})}
+      hasLocation={!!(newItem.activityLatitude && newItem.activityLongitude)}
+      theme={theme}
+    />
   </>
 )}
               {addItemType === 'personal' && (
@@ -8615,17 +11553,17 @@ export default function App() {
               )}
 
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[dynamicStyles.formInput, { minHeight: 80, textAlignVertical: 'top' }]}
                 placeholder="Notes (optional)"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={themeColors.textMuted}
                 value={newItem.notes}
                 onChangeText={(text) => setNewItem({...newItem, notes: text})}
                 multiline
               />
 
-              <View style={styles.modalButtons}>
+              <View style={dynamicStyles.modalButtons}>
                 <TouchableOpacity
-                  style={[styles.button, styles.buttonCancel]}
+                  style={[dynamicStyles.button, dynamicStyles.buttonCancel]}
                   onPress={() => {
                     setShowAddForm(false);
                     setIsEditMode(false);
@@ -8635,18 +11573,18 @@ export default function App() {
                     setAddressSuggestions([]);
                   }}
                 >
-                  <Text style={styles.buttonCancelText}>Cancel</Text>
+                  <Text style={dynamicStyles.buttonCancelText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
-                    styles.button,
-                    styles.buttonAdd,
-                    !isEditMode && isSubmitting && styles.buttonDisabled,
+                    dynamicStyles.button,
+                    dynamicStyles.buttonAdd,
+                    !isEditMode && isSubmitting && dynamicStyles.buttonDisabled,
                   ]}
                   onPress={isEditMode ? saveEditedItem : addItem}
                   disabled={!isEditMode && isSubmitting}
                 >
-                  <Text style={styles.buttonText}>{isEditMode ? 'Save' : 'Add'}</Text>
+                  <Text style={dynamicStyles.buttonText}>{isEditMode ? 'Save' : 'Add'}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -8753,33 +11691,34 @@ export default function App() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
-          style={styles.modalOverlay}
+          style={dynamicStyles.formModalOverlay}
         >
           <TouchableOpacity
-            style={styles.modalBackdrop}
+            style={dynamicStyles.formModalBackdrop}
             activeOpacity={1}
             onPress={closeRecipeForm}
           />
-          <View style={styles.modalContent}>
+          <View style={dynamicStyles.formModalContent}>
             <ScrollView
               contentContainerStyle={{
                 paddingBottom: allowManualRecipeEntry ? 32 : 32,
               }}
               keyboardShouldPersistTaps="handled"
             >
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{editingRecipeId ? 'Edit Recipe' : 'Add Recipe'}</Text>
+              <View style={dynamicStyles.formModalHeader}>
+                <Text style={dynamicStyles.modalTitle}>{editingRecipeId ? 'Edit Recipe' : 'Add Recipe'}</Text>
                 <TouchableOpacity onPress={closeRecipeForm}>
-                  <X size={24} color="#9CA3AF" />
+                  <X size={24} color={themeColors.textMuted} />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.modalSubtitle}>
+              <View style={dynamicStyles.formModalForm}>
+              <Text style={dynamicStyles.modalSubtitle}>
                 Paste a TikTok or Instagram link and we&apos;ll pull the ingredients and steps for you.
               </Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.formInput}
                 placeholder="Video link"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={themeColors.textMuted}
                 autoCapitalize="none"
                 keyboardType="url"
                 value={newRecipeUrl}
@@ -8824,14 +11763,14 @@ export default function App() {
                 }}
               />
               {/* Category Tags */}
-              <Text style={styles.recipeTagsLabel}>Tags (optional)</Text>
-              <View style={styles.recipeTagsContainer}>
+              <Text style={dynamicStyles.recipeTagsLabel}>Tags (optional)</Text>
+              <View style={dynamicStyles.recipeTagsContainer}>
                 {['Quick', 'Dinner', 'Dessert', 'Healthy', 'Breakfast', 'Lunch'].map(tag => (
                   <TouchableOpacity
                     key={tag}
                     style={[
-                      styles.recipeTagButton,
-                      newRecipeTags.includes(tag) && styles.recipeTagButtonActive
+                      dynamicStyles.recipeTagButton,
+                      newRecipeTags.includes(tag) && dynamicStyles.recipeTagButtonActive
                     ]}
                     onPress={() => {
                       if (newRecipeTags.includes(tag)) {
@@ -8842,32 +11781,32 @@ export default function App() {
                     }}
                   >
                     <Text style={[
-                      styles.recipeTagButtonText,
-                      newRecipeTags.includes(tag) && styles.recipeTagButtonTextActive
+                      dynamicStyles.recipeTagButtonText,
+                      newRecipeTags.includes(tag) && dynamicStyles.recipeTagButtonTextActive
                     ]}>{tag}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
               {recipeExtractionError ? (
-                <Text style={styles.errorText}>{recipeExtractionError}</Text>
+                <Text style={dynamicStyles.errorText}>{recipeExtractionError}</Text>
               ) : null}
-              <View style={styles.modalButtons}>
+              <View style={dynamicStyles.modalButtons}>
                 <TouchableOpacity
-                  style={[styles.button, styles.buttonCancel]}
+                  style={[dynamicStyles.button, dynamicStyles.buttonCancel]}
                   onPress={closeRecipeForm}
                 >
-                  <Text style={styles.buttonCancelText}>Cancel</Text>
+                  <Text style={dynamicStyles.buttonCancelText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
-                    styles.button,
-                    styles.buttonAdd,
+                    dynamicStyles.button,
+                    dynamicStyles.buttonAdd,
                     (isExtractingRecipe ||
                       (editingRecipeId
                         ? !recipeHasChanges
                         : (allowManualRecipeEntry
                           ? !manualRecipeReady
-                          : !newRecipeUrl.trim()))) && styles.buttonDisabled,
+                          : !newRecipeUrl.trim()))) && dynamicStyles.buttonDisabled,
                   ]}
                   disabled={
                     isExtractingRecipe ||
@@ -8880,7 +11819,7 @@ export default function App() {
                   {isExtractingRecipe ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.buttonText}>
+                    <Text style={dynamicStyles.buttonText}>
                       {editingRecipeId ? 'Save Recipe' : (allowManualRecipeEntry ? 'Add Recipe' : 'Fetch Recipe')}
                     </Text>
                   )}
@@ -8888,49 +11827,49 @@ export default function App() {
               </View>
               {allowManualRecipeEntry && (
                 <>
-                  <Text style={styles.manualSectionHeader}>
+                  <Text style={dynamicStyles.manualSectionHeader}>
                     Add recipe manually
                   </Text>
-                  <Text style={styles.manualFieldLabel}>Caption from link</Text>
+                  <Text style={dynamicStyles.manualFieldLabel}>Caption from link</Text>
                   <TextInput
-                    style={[styles.input, styles.textAreaLarge]}
+                    style={[dynamicStyles.formInput, { minHeight: 100, textAlignVertical: 'top' }]}
                     placeholder="Caption will appear here if automatic extraction fails"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     multiline
                     textAlignVertical="top"
                     value={manualRecipeRawCaption}
                     onChangeText={setManualRecipeRawCaption}
                   />
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.formInput}
                     placeholder="Recipe title"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     value={manualRecipeTitle}
                     onChangeText={setManualRecipeTitle}
                   />
                   <TextInput
-                    style={[styles.input, styles.textArea]}
+                    style={[dynamicStyles.formInput, { minHeight: 80, textAlignVertical: 'top' }]}
                     placeholder="Description (optional)"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     multiline
                     value={manualRecipeDescription}
                     onChangeText={setManualRecipeDescription}
                   />
-                  <Text style={styles.manualFieldLabel}>Ingredients (one per line)</Text>
+                  <Text style={dynamicStyles.manualFieldLabel}>Ingredients (one per line)</Text>
                   <TextInput
-                    style={[styles.input, styles.textAreaLarge]}
+                    style={[dynamicStyles.formInput, { minHeight: 100, textAlignVertical: 'top' }]}
                     placeholder="e.g. 1 tbsp chili oil"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     multiline
                     textAlignVertical="top"
                     value={manualRecipeIngredients}
                     onChangeText={setManualRecipeIngredients}
                   />
-                  <Text style={styles.manualFieldLabel}>Steps (one per line)</Text>
+                  <Text style={dynamicStyles.manualFieldLabel}>Steps (one per line)</Text>
                   <TextInput
-                    style={[styles.input, styles.textAreaLarge]}
+                    style={[dynamicStyles.formInput, { minHeight: 100, textAlignVertical: 'top' }]}
                     placeholder="e.g. Whisk eggs in a small bowl"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={themeColors.textMuted}
                     multiline
                     textAlignVertical="top"
                     value={manualRecipeSteps}
@@ -8938,6 +11877,7 @@ export default function App() {
                   />
                 </>
               )}
+              </View>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -8952,44 +11892,44 @@ export default function App() {
           setSelectedRecipe(null);
         }}
       >
-        <View style={styles.modalOverlay}>
+        <View style={dynamicStyles.modalOverlay}>
           <TouchableOpacity
-            style={styles.modalBackdrop}
+            style={dynamicStyles.modalBackdrop}
             activeOpacity={1}
             onPress={() => {
               setShowRecipeActions(false);
               setSelectedRecipe(null);
             }}
           />
-          <View style={[styles.modalContent, styles.recipeDetailModal]}>
+          <View style={dynamicStyles.recipeDetailModal}>
             {selectedRecipe && (
               <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-                <View style={styles.recipeDetailHeader}>
-                  <Text style={[styles.modalTitle, styles.recipeDetailTitle]}>
+                <View style={dynamicStyles.recipeDetailHeader}>
+                  <Text style={dynamicStyles.recipeDetailTitle}>
                     {(selectedRecipe.title || '').trim() || 'Recipe'}
                   </Text>
-                  <View style={styles.recipeDetailHeaderActions}>
+                  <View style={dynamicStyles.recipeDetailHeaderActions}>
                     <TouchableOpacity
                       onPress={() => setShowRecipeActions((prev) => !prev)}
-                      style={styles.recipeDetailActionButton}
+                      style={dynamicStyles.recipeDetailActionButton}
                     >
-                      <MoreVertical size={20} color="#9CA3AF" />
+                      <MoreVertical size={20} color={themeColors.textMuted} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => {
                         setShowRecipeActions(false);
                           setSelectedRecipe(null);
                       }}
-                      style={styles.recipeDetailActionButton}
+                      style={dynamicStyles.recipeDetailActionButton}
                     >
-                      <X size={24} color="#9CA3AF" />
+                      <X size={24} color={themeColors.textMuted} />
                     </TouchableOpacity>
                   </View>
                 </View>
                 {showRecipeActions && (
-                  <View style={styles.recipeDetailActionSheet}>
+                  <View style={dynamicStyles.recipeDetailActionSheet}>
                     <TouchableOpacity
-                      style={styles.recipeDetailActionSheetItem}
+                      style={dynamicStyles.recipeDetailActionSheetItem}
                       onPress={() => {
                         setShowRecipeActions(false);
                         if (selectedRecipe) {
@@ -9022,10 +11962,10 @@ export default function App() {
                       }}
                     >
                       <Pencil size={18} color="#fff" />
-                      <Text style={styles.recipeDetailActionSheetText}>Edit Recipe</Text>
+                      <Text style={dynamicStyles.recipeDetailActionSheetText}>Edit Recipe</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.recipeDetailActionSheetItem}
+                      style={dynamicStyles.recipeDetailActionSheetItem}
                       onPress={() => {
                         setShowRecipeActions(false);
                         if (selectedRecipe) {
@@ -9034,13 +11974,13 @@ export default function App() {
                       }}
                     >
                       <Share2 size={18} color="#fff" />
-                      <Text style={styles.recipeDetailActionSheetText}>Share</Text>
+                      <Text style={dynamicStyles.recipeDetailActionSheetText}>Share</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.recipeDetailActionSheetItem, styles.recipeDetailActionSheetItemSecondary]}
+                      style={[dynamicStyles.recipeDetailActionSheetItem, dynamicStyles.recipeDetailActionSheetItemSecondary]}
                       onPress={() => setShowRecipeActions(false)}
                     >
-                      <Text style={styles.recipeDetailActionSheetSecondaryText}>Close</Text>
+                      <Text style={dynamicStyles.recipeDetailActionSheetSecondaryText}>Close</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -9048,7 +11988,7 @@ export default function App() {
                   <Image source={{ uri: selectedRecipe.thumbnail }} style={styles.recipeDetailImage} />
                 ) : null}
                 {selectedRecipe.sourceName ? (
-                  <Text style={styles.recipeSourceDetail}>Source: {selectedRecipe.sourceName}</Text>
+                  <Text style={dynamicStyles.recipeSourceDetail}>Source: {selectedRecipe.sourceName}</Text>
                 ) : null}
                 {(hasSelectedRecipeVideo || hasSelectedRecipeIngredients) && (
                   <View style={styles.recipeActionButtonRow}>
@@ -9085,38 +12025,38 @@ export default function App() {
                   </View>
                 )}
                 {selectedRecipe.description ? (
-                  <Text style={styles.recipeDescription}>{selectedRecipe.description}</Text>
+                  <Text style={dynamicStyles.recipeDescription}>{selectedRecipe.description}</Text>
                 ) : null}
-                <Text style={styles.recipeSectionTitle}>Ingredients</Text>
+                <Text style={dynamicStyles.recipeSectionTitle}>Ingredients</Text>
                 {Array.isArray(selectedRecipe.ingredients) && selectedRecipe.ingredients.length > 0 ? (
                   <View style={styles.recipeList}>
                     {selectedRecipe.ingredients.map((ingredient, index) => (
                       <View key={`ingredient-${index}`} style={styles.recipeListItem}>
                         <View style={styles.recipeBullet} />
-                        <Text style={styles.recipeListText}>{formatIngredientLine(ingredient)}</Text>
+                        <Text style={dynamicStyles.recipeListText}>{formatIngredientLine(ingredient)}</Text>
                       </View>
                     ))}
                   </View>
                 ) : (
-                  <Text style={styles.recipeEmptyText}>No ingredients found.</Text>
+                  <Text style={dynamicStyles.recipeEmptyText}>No ingredients found.</Text>
                 )}
-                <Text style={styles.recipeSectionTitle}>Steps</Text>
+                <Text style={dynamicStyles.recipeSectionTitle}>Steps</Text>
                 {Array.isArray(selectedRecipe.steps) && selectedRecipe.steps.length > 0 ? (
                   <View style={styles.recipeList}>
                     {selectedRecipe.steps.map((step, index) => (
                       <View key={`step-${index}`} style={styles.recipeListItemNumbered}>
                         <Text style={styles.recipeStepNumber}>{index + 1}</Text>
-                        <Text style={styles.recipeListText}>{typeof step === 'string' ? step : String(step)}</Text>
+                        <Text style={dynamicStyles.recipeListText}>{typeof step === 'string' ? step : String(step)}</Text>
                       </View>
                     ))}
                   </View>
                 ) : (
-                  <Text style={styles.recipeEmptyText}>No steps found.</Text>
+                  <Text style={dynamicStyles.recipeEmptyText}>No steps found.</Text>
                 )}
                 {selectedRecipe.notes ? (
                   <>
-                    <Text style={styles.recipeSectionTitle}>Notes</Text>
-                    <Text style={styles.recipeNotesText}>{selectedRecipe.notes}</Text>
+                    <Text style={dynamicStyles.recipeSectionTitle}>Notes</Text>
+                    <Text style={dynamicStyles.recipeNotesText}>{selectedRecipe.notes}</Text>
                   </>
                 ) : null}
               </ScrollView>
@@ -9135,55 +12075,55 @@ export default function App() {
           setSelectedActivity(null);
         }}
       >
-        <View style={styles.modalOverlay}>
+        <View style={dynamicStyles.modalOverlay}>
           <TouchableOpacity
-            style={styles.modalBackdrop}
+            style={dynamicStyles.formModalBackdrop}
             activeOpacity={1}
             onPress={() => {
               setShowActivityActions(false);
               setSelectedActivity(null);
             }}
           />
-          <View style={[styles.modalContent, styles.activityDetailModal]}>
+          <View style={dynamicStyles.activityDetailModal}>
             {selectedActivity && (
               <View style={{ flex: 1 }}>
                 {/* Decorative Header Accent */}
-                <View style={styles.activityDetailAccent} />
+                <View style={[styles.activityDetailAccent, { backgroundColor: themeColors.accentPrimary }]} />
 
                 {/* Header */}
-                <View style={styles.activityDetailHeader}>
+                <View style={dynamicStyles.activityDetailHeader}>
                   <View style={styles.activityDetailHeaderLeft}>
                     <View style={[
                       styles.activityDetailIcon,
-                      { backgroundColor: selectedActivity.isPersonal ? '#fef3c7' : '#dbeafe' }
+                      { backgroundColor: selectedActivity.isPersonal ? (theme === 'dark' ? 'rgba(254, 243, 199, 0.2)' : '#fef3c7') : (theme === 'dark' ? 'rgba(219, 234, 254, 0.2)' : '#dbeafe') }
                     ]}>
-                      <Calendar size={24} color={selectedActivity.isPersonal ? '#b45309' : '#2563eb'} />
+                      <Calendar size={24} color={selectedActivity.isPersonal ? '#fbbf24' : '#60a5fa'} />
                     </View>
                   </View>
                   <View style={styles.activityDetailHeaderActions}>
                     <TouchableOpacity
                       onPress={() => setShowActivityActions(prev => !prev)}
-                      style={styles.activityDetailActionBtn}
+                      style={dynamicStyles.activityDetailActionBtn}
                     >
-                      <MoreVertical size={20} color="#6b7280" />
+                      <MoreVertical size={20} color={themeColors.textMuted} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => {
                         setShowActivityActions(false);
                         setSelectedActivity(null);
                       }}
-                      style={styles.activityDetailActionBtn}
+                      style={dynamicStyles.activityDetailActionBtn}
                     >
-                      <X size={22} color="#6b7280" />
+                      <X size={22} color={themeColors.textMuted} />
                     </TouchableOpacity>
                   </View>
                 </View>
 
                 {/* Action Sheet */}
                 {showActivityActions && (
-                  <View style={styles.activityDetailActionSheet}>
+                  <View style={dynamicStyles.activityDetailActionSheet}>
                     <TouchableOpacity
-                      style={styles.activityDetailActionSheetItem}
+                      style={dynamicStyles.activityDetailActionSheetItem}
                       onPress={() => {
                         setShowActivityActions(false);
                         const activity = selectedActivity;
@@ -9191,11 +12131,11 @@ export default function App() {
                         openEditForm(activity, activity.isPersonal ? 'personalActivity' : 'activity');
                       }}
                     >
-                      <Pencil size={18} color="#1f2933" />
-                      <Text style={styles.activityDetailActionSheetText}>Edit Activity</Text>
+                      <Pencil size={18} color="#fff" />
+                      <Text style={[dynamicStyles.activityDetailActionSheetText, { color: '#fff' }]}>Edit Activity</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.activityDetailActionSheetItem}
+                      style={dynamicStyles.activityDetailActionSheetItem}
                       onPress={() => {
                         setShowActivityActions(false);
                         if (selectedActivity?.location?.address) {
@@ -9204,11 +12144,11 @@ export default function App() {
                         }
                       }}
                     >
-                      <MapPin size={18} color="#1f2933" />
-                      <Text style={styles.activityDetailActionSheetText}>Open in Maps</Text>
+                      <MapPin size={18} color="#fff" />
+                      <Text style={[dynamicStyles.activityDetailActionSheetText, { color: '#fff' }]}>Open in Maps</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.activityDetailActionSheetItem, styles.activityDetailActionSheetItemDanger]}
+                      style={[dynamicStyles.activityDetailActionSheetItem, { borderTopWidth: 1, borderTopColor: theme === 'dark' ? '#4b5563' : '#374151' }]}
                       onPress={() => {
                         setShowActivityActions(false);
                         Alert.alert(
@@ -9229,25 +12169,25 @@ export default function App() {
                       }}
                     >
                       <Trash2 size={18} color="#ef4444" />
-                      <Text style={[styles.activityDetailActionSheetText, { color: '#ef4444' }]}>Delete</Text>
+                      <Text style={[dynamicStyles.activityDetailActionSheetText, { color: '#ef4444' }]}>Delete</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.activityDetailActionSheetItem, styles.activityDetailActionSheetItemClose]}
+                      style={[dynamicStyles.activityDetailActionSheetItem, { justifyContent: 'center', borderTopWidth: 1, borderTopColor: theme === 'dark' ? '#4b5563' : '#374151' }]}
                       onPress={() => setShowActivityActions(false)}
                     >
-                      <Text style={styles.activityDetailActionSheetCloseText}>Close</Text>
+                      <Text style={{ color: '#9ca3af', fontSize: 15 }}>Close</Text>
                     </TouchableOpacity>
                   </View>
                 )}
 
                 {/* Content */}
                 <ScrollView
-                  style={styles.activityDetailContent}
+                  style={dynamicStyles.activityDetailContent}
                   contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}
                   showsVerticalScrollIndicator={false}
                 >
                   {/* Title */}
-                  <Text style={styles.activityDetailTitle}>{selectedActivity.title}</Text>
+                  <Text style={dynamicStyles.activityDetailTitle}>{selectedActivity.title}</Text>
 
                   {/* Category Badge */}
                   <View style={styles.activityDetailBadgeRow}>
@@ -9272,14 +12212,14 @@ export default function App() {
                   </View>
 
                   {/* Date & Time Card */}
-                  <View style={styles.activityDetailInfoCard}>
+                  <View style={dynamicStyles.activityDetailInfoCard}>
                     <View style={styles.activityDetailInfoRow}>
                       <View style={styles.activityDetailInfoIcon}>
-                        <Calendar size={20} color="#b45309" />
+                        <Calendar size={20} color={themeColors.accentPrimary} />
                       </View>
                       <View style={styles.activityDetailInfoContent}>
-                        <Text style={styles.activityDetailInfoLabel}>{selectedActivity.endDate ? 'Dates' : 'Date'}</Text>
-                        <Text style={styles.activityDetailInfoValue}>
+                        <Text style={dynamicStyles.activityDetailInfoLabel}>{selectedActivity.endDate ? 'Dates' : 'Date'}</Text>
+                        <Text style={dynamicStyles.activityDetailInfoValue}>
                           {selectedActivity.date ? (
                             (() => {
                               // Parse dates as local to avoid timezone issues
@@ -9315,11 +12255,11 @@ export default function App() {
                     {selectedActivity.time && (
                       <View style={styles.activityDetailInfoRow}>
                         <View style={styles.activityDetailInfoIcon}>
-                          <Clock size={20} color="#b45309" />
+                          <Clock size={20} color={themeColors.accentPrimary} />
                         </View>
                         <View style={styles.activityDetailInfoContent}>
-                          <Text style={styles.activityDetailInfoLabel}>Time</Text>
-                          <Text style={styles.activityDetailInfoValue}>
+                          <Text style={dynamicStyles.activityDetailInfoLabel}>Time</Text>
+                          <Text style={dynamicStyles.activityDetailInfoValue}>
                             {formatTime(selectedActivity.time)}
                           </Text>
                         </View>
@@ -9330,19 +12270,19 @@ export default function App() {
                   {/* Location Card */}
                   {selectedActivity.location?.address && (
                     <TouchableOpacity
-                      style={styles.activityDetailLocationCard}
+                      style={dynamicStyles.activityDetailLocationCard}
                       onPress={() => {
                         const address = encodeURIComponent(selectedActivity.location.address);
                         Linking.openURL(`maps://?address=${address}`);
                       }}
                       activeOpacity={0.8}
                     >
-                      <View style={styles.activityDetailLocationIcon}>
+                      <View style={[styles.activityDetailLocationIcon, { backgroundColor: themeColors.accentPrimary }]}>
                         <MapPin size={22} color="#fff" />
                       </View>
                       <View style={styles.activityDetailLocationContent}>
-                        <Text style={styles.activityDetailLocationLabel}>Location</Text>
-                        <Text style={styles.activityDetailLocationValue} numberOfLines={2}>
+                        <Text style={dynamicStyles.activityDetailLocationLabel}>Location</Text>
+                        <Text style={dynamicStyles.activityDetailLocationAddress} numberOfLines={2}>
                           {selectedActivity.location.address}
                         </Text>
                       </View>
@@ -9457,13 +12397,13 @@ export default function App() {
         transparent={true}
         onRequestClose={() => setShowPersonProfile(false)}
       >
-        <View style={styles.personProfileOverlay}>
+        <View style={dynamicStyles.personProfileOverlay}>
           <TouchableOpacity
-            style={styles.personProfileBackdrop}
+            style={dynamicStyles.personProfileBackdrop}
             activeOpacity={1}
             onPress={() => setShowPersonProfile(false)}
           />
-          <View style={styles.personProfileContent}>
+          <View style={dynamicStyles.personProfileContent}>
             {profilePerson && (() => {
               const personGifts = giftIdeas.filter(g => g.person === profilePerson.name);
               const avatarColors = ['#c084fc', '#4ade80', '#60a5fa', '#f97316', '#ec4899', '#facc15'];
@@ -9479,23 +12419,23 @@ export default function App() {
               return (
                 <ScrollView showsVerticalScrollIndicator={false}>
                   {/* Header */}
-                  <View style={styles.personProfileHeader}>
-                    <View style={[styles.personProfileAvatar, { backgroundColor: avatarColor }]}>
-                      <Text style={styles.personProfileAvatarText}>{profilePerson.name[0]}</Text>
+                  <View style={dynamicStyles.personProfileHeader}>
+                    <View style={[dynamicStyles.personProfileAvatar, { backgroundColor: avatarColor }]}>
+                      <Text style={dynamicStyles.personProfileAvatarText}>{profilePerson.name[0]}</Text>
                     </View>
-                    <Text style={styles.personProfileName}>{profilePerson.name}</Text>
+                    <Text style={dynamicStyles.personProfileName}>{profilePerson.name}</Text>
                     <TouchableOpacity
-                      style={styles.personProfileCloseBtn}
+                      style={dynamicStyles.personProfileCloseBtn}
                       onPress={() => setShowPersonProfile(false)}
                     >
-                      <X size={24} color="#6b7280" />
+                      <X size={24} color={themeColors.textMuted} />
                     </TouchableOpacity>
                   </View>
 
                   {/* Birthday Section */}
-                  <View style={styles.personProfileSection}>
-                    <Text style={styles.personProfileSectionTitle}>Birthday</Text>
-                    <View style={styles.personProfileDatePicker}>
+                  <View style={dynamicStyles.personProfileSection}>
+                    <Text style={dynamicStyles.personProfileSectionTitle}>Birthday</Text>
+                    <View style={dynamicStyles.personProfileDatePicker}>
                       <DateTimePicker
                         value={birthdayDate}
                         mode="date"
@@ -9506,31 +12446,32 @@ export default function App() {
                           }
                         }}
                         style={{ flex: 1 }}
-                        accentColor="#b45309"
+                        accentColor={themeColors.accentPrimary}
+                        themeVariant={theme}
                       />
                     </View>
                   </View>
 
                   {/* Sizes Section */}
-                  <View style={styles.personProfileSection}>
-                    <Text style={styles.personProfileSectionTitle}>Sizes</Text>
-                    <View style={styles.personProfileSizeRow}>
-                      <View style={styles.personProfileSizeItem}>
-                        <Text style={styles.personProfileSizeLabel}>Clothing</Text>
+                  <View style={dynamicStyles.personProfileSection}>
+                    <Text style={dynamicStyles.personProfileSectionTitle}>Sizes</Text>
+                    <View style={dynamicStyles.personProfileSizeRow}>
+                      <View style={dynamicStyles.personProfileSizeItem}>
+                        <Text style={dynamicStyles.personProfileSizeLabel}>Clothing</Text>
                         <TextInput
-                          style={styles.personProfileSizeInput}
+                          style={dynamicStyles.personProfileSizeInput}
                           placeholder="S, M, L, XL..."
-                          placeholderTextColor="#9CA3AF"
+                          placeholderTextColor={themeColors.textMuted}
                           value={personClothingSize}
                           onChangeText={setPersonClothingSize}
                         />
                       </View>
-                      <View style={styles.personProfileSizeItem}>
-                        <Text style={styles.personProfileSizeLabel}>Shoe</Text>
+                      <View style={dynamicStyles.personProfileSizeItem}>
+                        <Text style={dynamicStyles.personProfileSizeLabel}>Shoe</Text>
                         <TextInput
-                          style={styles.personProfileSizeInput}
+                          style={dynamicStyles.personProfileSizeInput}
                           placeholder="8, 9, 10..."
-                          placeholderTextColor="#9CA3AF"
+                          placeholderTextColor={themeColors.textMuted}
                           value={personShoeSize}
                           onChangeText={setPersonShoeSize}
                           keyboardType="numeric"
@@ -9540,32 +12481,32 @@ export default function App() {
                   </View>
 
                   {/* Gift Ideas Section */}
-                  <View style={styles.personProfileSection}>
-                    <View style={styles.personProfileGiftHeader}>
-                      <Text style={styles.personProfileSectionTitle}>Gift Ideas</Text>
-                      <Text style={styles.personProfileGiftCount}>{personGifts.length} ideas</Text>
+                  <View style={dynamicStyles.personProfileSection}>
+                    <View style={dynamicStyles.personProfileGiftHeader}>
+                      <Text style={dynamicStyles.personProfileSectionTitle}>Gift Ideas</Text>
+                      <Text style={dynamicStyles.personProfileGiftCount}>{personGifts.length} ideas</Text>
                     </View>
                     {personGifts.length === 0 ? (
-                      <Text style={styles.personProfileEmptyText}>No gift ideas yet</Text>
+                      <Text style={dynamicStyles.personProfileEmptyText}>No gift ideas yet</Text>
                     ) : (
                       personGifts.map(gift => (
                         <TouchableOpacity
                           key={gift.id}
-                          style={styles.personProfileGiftItem}
+                          style={dynamicStyles.personProfileGiftItem}
                           onPress={() => {
                             setShowPersonProfile(false);
                             openEditForm(gift, 'gift');
                           }}
                         >
-                          <Gift size={18} color="#b45309" />
-                          <View style={styles.personProfileGiftInfo}>
-                            <Text style={styles.personProfileGiftName}>{gift.idea}</Text>
+                          <Gift size={18} color={themeColors.accentPrimary} />
+                          <View style={dynamicStyles.personProfileGiftInfo}>
+                            <Text style={dynamicStyles.personProfileGiftName}>{gift.idea}</Text>
                             {gift.notes && (
-                              <Text style={styles.personProfileGiftNotes} numberOfLines={1}>{gift.notes}</Text>
+                              <Text style={dynamicStyles.personProfileGiftNotes} numberOfLines={1}>{gift.notes}</Text>
                             )}
                           </View>
                           {gift.budget && (
-                            <Text style={styles.personProfileGiftPrice}>${gift.budget}</Text>
+                            <Text style={dynamicStyles.personProfileGiftPrice}>${gift.budget}</Text>
                           )}
                         </TouchableOpacity>
                       ))
@@ -9574,15 +12515,15 @@ export default function App() {
 
                   {/* Save Button */}
                   <TouchableOpacity
-                    style={styles.personProfileSaveBtn}
+                    style={dynamicStyles.personProfileSaveBtn}
                     onPress={savePersonProfile}
                   >
-                    <Text style={styles.personProfileSaveBtnText}>Save Profile</Text>
+                    <Text style={dynamicStyles.personProfileSaveBtnText}>Save Profile</Text>
                   </TouchableOpacity>
 
                   {/* Add Gift Button */}
                   <TouchableOpacity
-                    style={styles.personProfileAddGiftBtn}
+                    style={dynamicStyles.personProfileAddGiftBtn}
                     onPress={() => {
                       setShowPersonProfile(false);
                       setSelectedPerson(profilePerson.name);
@@ -9611,8 +12552,8 @@ export default function App() {
                       setShowAddForm(true);
                     }}
                   >
-                    <Plus size={18} color="#b45309" />
-                    <Text style={styles.personProfileAddGiftText}>Add Gift Idea</Text>
+                    <Plus size={18} color={themeColors.accentPrimary} />
+                    <Text style={dynamicStyles.personProfileAddGiftText}>Add Gift Idea</Text>
                   </TouchableOpacity>
 
                   <View style={{ height: 40 }} />
@@ -9658,6 +12599,7 @@ export default function App() {
             setShowProfile(false);
             setShowSettings(true);
           }}
+          theme={theme}
         />
       </Modal>
 
@@ -9721,23 +12663,218 @@ export default function App() {
         />
       </Modal>
 
+      {/* Tag Manager Modal */}
+      <Modal
+        visible={showTagManager}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setShowTagManager(false);
+          setEditingTag(null);
+          setNewTagName('');
+          setNewTagColor('#6366f1');
+        }}
+      >
+        <View style={dynamicStyles.formModalOverlay}>
+          <TouchableOpacity
+            style={dynamicStyles.formModalBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              setShowTagManager(false);
+              setEditingTag(null);
+              setNewTagName('');
+              setNewTagColor('#6366f1');
+            }}
+          />
+          <View style={[dynamicStyles.formModalContent, { height: 500 }]}>
+            <View style={dynamicStyles.formModalHeader}>
+              <Text style={dynamicStyles.modalTitle}>Manage Tags</Text>
+              <TouchableOpacity onPress={() => {
+                setShowTagManager(false);
+                setEditingTag(null);
+                setNewTagName('');
+                setNewTagColor('#6366f1');
+              }}>
+                <X size={24} color={themeColors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 20 }}>
+              {/* Add new tag section */}
+              <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: themeColors.border }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: themeColors.text, marginBottom: 12 }}>
+                  Create New Tag
+                </Text>
+                <TextInput
+                  style={dynamicStyles.formInput}
+                  placeholder="Tag name"
+                  placeholderTextColor={themeColors.textMuted}
+                  value={newTagName}
+                  onChangeText={setNewTagName}
+                />
+                <Text style={{ fontSize: 12, color: themeColors.textSecondary, marginBottom: 8, marginTop: 8 }}>
+                  Select Color
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {TAG_COLORS.map((color) => (
+                    <TouchableOpacity
+                      key={color}
+                      onPress={() => setNewTagColor(color)}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: color,
+                        borderWidth: newTagColor === color ? 3 : 0,
+                        borderColor: themeColors.text,
+                      }}
+                    />
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: newTagName.trim() ? themeColors.primary : themeColors.border,
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    borderRadius: 8,
+                    marginTop: 16,
+                    alignItems: 'center',
+                  }}
+                  onPress={addIdeaTag}
+                  disabled={!newTagName.trim()}
+                >
+                  <Text style={{ color: newTagName.trim() ? '#fff' : themeColors.textMuted, fontWeight: '600' }}>
+                    Add Tag
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Existing tags list */}
+              <View style={{ padding: 16 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: themeColors.text, marginBottom: 12 }}>
+                  Your Tags ({ideaTags.length})
+                </Text>
+                {ideaTags.length === 0 ? (
+                  <Text style={{ color: themeColors.textMuted, textAlign: 'center', paddingVertical: 20 }}>
+                    No tags yet. Create your first tag above!
+                  </Text>
+                ) : (
+                  ideaTags.map((tag) => (
+                    <View
+                      key={tag.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                        borderBottomWidth: 1,
+                        borderBottomColor: themeColors.border,
+                      }}
+                    >
+                      {editingTag?.id === tag.id ? (
+                        <View style={{ flex: 1 }}>
+                          <TextInput
+                            style={[dynamicStyles.formInput, { marginBottom: 8 }]}
+                            value={editingTag.name}
+                            onChangeText={(text) => setEditingTag({ ...editingTag, name: text })}
+                            autoFocus
+                          />
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                            {TAG_COLORS.map((color) => (
+                              <TouchableOpacity
+                                key={color}
+                                onPress={() => setEditingTag({ ...editingTag, color })}
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: 14,
+                                  backgroundColor: color,
+                                  borderWidth: editingTag.color === color ? 2 : 0,
+                                  borderColor: themeColors.text,
+                                }}
+                              />
+                            ))}
+                          </View>
+                          <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <TouchableOpacity
+                              style={{
+                                flex: 1,
+                                backgroundColor: themeColors.primary,
+                                paddingVertical: 8,
+                                borderRadius: 6,
+                                alignItems: 'center',
+                              }}
+                              onPress={() => updateIdeaTag(tag.id, { name: editingTag.name, color: editingTag.color })}
+                            >
+                              <Text style={{ color: '#fff', fontWeight: '500' }}>Save</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={{
+                                flex: 1,
+                                backgroundColor: themeColors.cardBackground,
+                                paddingVertical: 8,
+                                borderRadius: 6,
+                                alignItems: 'center',
+                                borderWidth: 1,
+                                borderColor: themeColors.border,
+                              }}
+                              onPress={() => setEditingTag(null)}
+                            >
+                              <Text style={{ color: themeColors.text, fontWeight: '500' }}>Cancel</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : (
+                        <>
+                          <View
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: 6,
+                              backgroundColor: tag.color,
+                              marginRight: 12,
+                            }}
+                          />
+                          <Text style={{ flex: 1, color: themeColors.text, fontSize: 16 }}>{tag.name}</Text>
+                          <TouchableOpacity
+                            onPress={() => setEditingTag({ id: tag.id, name: tag.name, color: tag.color })}
+                            style={{ padding: 8 }}
+                          >
+                            <Pencil size={18} color={themeColors.textSecondary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => deleteIdeaTag(tag.id)}
+                            style={{ padding: 8 }}
+                          >
+                            <Trash2 size={18} color="#ef4444" />
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </View>
+                  ))
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={showRestaurantDetails}
         transparent={true}
         animationType="slide"
         onRequestClose={() => setShowRestaurantDetails(false)}
       >
-        <View style={styles.restaurantModalOverlay}>
+        <View style={dynamicStyles.restaurantModalOverlay}>
           <TouchableOpacity
             style={[styles.modalBackdrop, { zIndex: 1 }]}
             activeOpacity={1}
             onPress={() => setShowRestaurantDetails(false)}
           />
-          <View style={[styles.restaurantModalContent, { zIndex: 2 }]}>
+          <View style={[dynamicStyles.restaurantModalContent, { zIndex: 2 }]}>
             <View style={[styles.modalHeader, { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16 }]}>
-              <Text style={styles.modalTitle}>Restaurant Details</Text>
+              <Text style={dynamicStyles.modalTitle}>Restaurant Details</Text>
               <TouchableOpacity onPress={() => setShowRestaurantDetails(false)}>
-                <X size={24} color="#9CA3AF" />
+                <X size={24} color={themeColors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -9747,8 +12884,8 @@ export default function App() {
                 <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading details...</Text>
               </View>
             ) : restaurantDetails ? (
-              <ScrollView 
-                style={styles.restaurantDetailsContent} 
+              <ScrollView
+                style={styles.restaurantDetailsContent}
                 contentContainerStyle={styles.restaurantDetailsScrollContent}
                 showsVerticalScrollIndicator={true}
                 bounces={true}
@@ -9760,8 +12897,8 @@ export default function App() {
                     resizeMode="cover"
                   />
                 )}
-                
-                <View style={styles.restaurantDetailsSection}>
+
+                <View style={dynamicStyles.restaurantDetailsSection}>
                   <View style={styles.restaurantNameRow}>
                     <Text style={[styles.restaurantName, { color: themeColors.text }]}>{restaurantDetails.name}</Text>
                     {restaurantDetails.restaurantId && (
@@ -9960,7 +13097,7 @@ export default function App() {
         onComplete={() => setShowFirework(false)}
       />
 
-      <View style={styles.bottomTabBar}>
+      <View style={dynamicStyles.bottomTabBar}>
         {orderedTabs.map((tab) => renderTabButton(tab))}
       </View>
     </SafeAreaView>
@@ -13081,12 +16218,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   pageMainTitle: {
+    fontFamily: 'PlayfairDisplay_400Regular',
     fontSize: 28,
-    fontWeight: '500',
     color: '#1f2933',
   },
   pageMainTitleAccent: {
-    fontStyle: 'italic',
+    fontFamily: 'PlayfairDisplay_500Medium_Italic',
     color: '#b45309',
   },
 
@@ -13137,8 +16274,8 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   ideasSubheaderTitleRegular: {
+    fontFamily: 'PlayfairDisplay_400Regular',
     fontSize: 24,
-    fontWeight: '400',
     color: '#1f2933',
   },
   ideasSubheaderTitleItalic: {
@@ -13327,6 +16464,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1f2933',
   },
+  giftToggleButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  giftToggleButtonActive: {
+    backgroundColor: '#b45309',
+    borderColor: '#b45309',
+  },
+  giftToggleButtonText: {
+    fontSize: 14,
+    color: '#1f2933',
+  },
+  giftToggleButtonTextActive: {
+    color: '#ffffff',
+  },
+  wishlistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  wishlistItemPurchased: {
+    opacity: 0.6,
+  },
+  wishlistItemInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  wishlistItemTitle: {
+    fontFamily: 'SourceSans3_500Medium',
+    fontSize: 16,
+    color: '#1f2933',
+  },
+  wishlistItemNotes: {
+    fontFamily: 'SourceSans3_400Regular',
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  wishlistItemPrice: {
+    fontFamily: 'SourceSans3_600SemiBold',
+    fontSize: 15,
+    color: '#b45309',
+    marginLeft: 12,
+  },
   giftPeopleScroll: {
     flex: 1,
     paddingHorizontal: 24,
@@ -13491,6 +16681,33 @@ const styles = StyleSheet.create({
     fontFamily: 'SourceSans3_600SemiBold',
     color: '#b45309',
   },
+  shopModeSelector: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 12,
+    backgroundColor: '#fdfaf5',
+  },
+  shopModeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  shopModeButtonActive: {
+    backgroundColor: '#b45309',
+    borderColor: '#b45309',
+  },
+  shopModeButtonText: {
+    fontSize: 14,
+    color: '#1f2933',
+  },
+  shopModeButtonTextActive: {
+    color: '#ffffff',
+  },
   frequentItemsContainer: {
     marginBottom: 16,
     paddingHorizontal: 24,
@@ -13603,15 +16820,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   foodToggleWord: {
-    fontFamily: 'PlayfairDisplay_500Medium',
+    fontFamily: 'PlayfairDisplay_400Regular',
     fontSize: 28,
-    fontWeight: '500',
     color: '#1f2933',
   },
   foodToggleWordActive: {
     fontFamily: 'PlayfairDisplay_500Medium_Italic',
     color: '#b45309',
-    fontStyle: 'italic',
     textDecorationLine: 'underline',
   },
   foodToggleSeparator: {
@@ -13794,12 +17009,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   todoMainTitle: {
+    fontFamily: 'PlayfairDisplay_400Regular',
     fontSize: 28,
-    fontWeight: '500',
     color: '#1f2933',
   },
   todoMainTitleAccent: {
-    fontStyle: 'italic',
+    fontFamily: 'PlayfairDisplay_500Medium_Italic',
     color: '#b45309',
   },
   todoToggleRow: {

@@ -1,226 +1,356 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  withSequence,
-  Easing,
-  withSpring,
-  interpolate,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Dimensions, Platform } from 'react-native';
+import { WebView } from 'react-native-webview';
 
-const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'];
-const BURST_COLORS = ['#FFD700', '#FF6B6B', '#4ECDC4', '#FFA07A'];
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Rocket that shoots up
-const Rocket = ({ originY, targetY, color, onComplete }) => {
-  const translateY = useSharedValue(0);
-  const opacity = useSharedValue(1);
+const FIREWORK_HTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent !important;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+    }
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent !important;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
 
-  useEffect(() => {
-    // Shoot up
-    translateY.value = withSequence(
-      withTiming(targetY - originY, {
-        duration: 600,
-        easing: Easing.out(Easing.quad),
-      }),
-      withTiming(targetY - originY + 20, {
-        duration: 50,
-        easing: Easing.in(Easing.quad),
-      })
-    );
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    resize();
+    window.addEventListener('resize', resize);
 
-    // Fade out as it reaches the top
-    opacity.value = withSequence(
-      withTiming(1, { duration: 500 }),
-      withTiming(0, { duration: 150 })
-    );
+    const colors = [
+      'rgba(255, 107, 107, 1)',
+      'rgba(255, 159, 67, 1)',
+      'rgba(255, 215, 0, 1)',
+      'rgba(78, 205, 196, 1)',
+      'rgba(255, 255, 255, 1)',
+      'rgba(167, 139, 250, 1)',
+      'rgba(251, 191, 36, 1)',
+    ];
 
-    // Trigger burst when rocket reaches top
-    const timer = setTimeout(() => {
-      onComplete?.();
-    }, 620);
+    class Particle {
+      constructor(x, y, color, velocity, size, type = 'spark') {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.velocity = velocity;
+        this.size = size;
+        this.type = type;
+        this.alpha = 1;
+        this.decay = type === 'glitter' ? 0.035 : 0.025 + Math.random() * 0.012;
+        this.gravity = type === 'glitter' ? 0.07 : 0.12;
+        this.friction = 0.98;
+        this.trail = [];
+        this.trailLength = type === 'glitter' ? 3 : 6;
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+        this.twinkle = Math.random() * Math.PI * 2;
+      }
 
-    return () => clearTimeout(timer);
-  }, []);
+      update() {
+        this.trail.push({ x: this.x, y: this.y, alpha: this.alpha });
+        if (this.trail.length > this.trailLength) {
+          this.trail.shift();
+        }
+        this.velocity.x *= this.friction;
+        this.velocity.y *= this.friction;
+        this.velocity.y += this.gravity;
+        this.x += this.velocity.x;
+        this.y += this.velocity.y;
+        this.alpha -= this.decay;
+        this.rotation += this.rotationSpeed;
+        this.twinkle += 0.15;
+      }
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateY: translateY.value }],
-      opacity: opacity.value,
-    };
-  });
+      draw(ctx) {
+        for (let i = 0; i < this.trail.length; i++) {
+          const t = this.trail[i];
+          const progress = i / this.trail.length;
+          const trailAlpha = progress * t.alpha * 0.4;
+          const trailSize = this.size * progress * 0.8;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, trailSize, 0, Math.PI * 2);
+          ctx.fillStyle = this.color.replace(/[\\d.]+\\)$/, trailAlpha + ')');
+          ctx.fill();
+        }
 
-  return (
-    <Animated.View style={[styles.rocket, { top: originY, backgroundColor: color }, animatedStyle]}>
-      <View style={styles.rocketFlame}>
-        <View style={[styles.flame, { backgroundColor: '#FFA500' }]} />
-      </View>
-    </Animated.View>
-  );
-};
+        let currentAlpha = this.alpha;
+        if (this.type === 'glitter') {
+          currentAlpha *= 0.5 + Math.sin(this.twinkle) * 0.5;
+        }
 
-// Burst particles
-const BurstParticle = ({ index, originX, originY, color }) => {
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.5);
+        ctx.save();
+        ctx.globalAlpha = currentAlpha;
+        ctx.shadowBlur = this.type === 'glitter' ? 8 : 12;
+        ctx.shadowColor = this.color;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
 
-  useEffect(() => {
-    const delay = index * 30;
-    const duration = 800 + Math.random() * 400;
-    
-    // Random direction
-    const angle = (Math.random() * 360) * (Math.PI / 180);
-    const distance = 100 + Math.random() * 80;
-    const endX = Math.cos(angle) * distance;
-    const endY = Math.sin(angle) * distance;
+        if (this.type === 'glitter') {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2;
+            const outerX = Math.cos(angle) * this.size;
+            const outerY = Math.sin(angle) * this.size;
+            const innerAngle = angle + Math.PI / 4;
+            const innerX = Math.cos(innerAngle) * this.size * 0.3;
+            const innerY = Math.sin(innerAngle) * this.size * 0.3;
+            if (i === 0) ctx.moveTo(outerX, outerY);
+            else ctx.lineTo(outerX, outerY);
+            ctx.lineTo(innerX, innerY);
+          }
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
 
-    // Scale and fade in
-    scale.value = withDelay(
-      delay,
-      withSequence(
-        withSpring(1.2, { damping: 10, stiffness: 150 }),
-        withTiming(0.8, { duration: duration * 0.7, easing: Easing.out(Easing.quad) })
-      )
-    );
+    class RocketParticle {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.size = 3 + Math.random() * 3;
+        this.alpha = 1;
+        this.decay = 0.05 + Math.random() * 0.03;
+        this.velocity = {
+          x: (Math.random() - 0.5) * 2,
+          y: Math.random() * 2 + 1
+        };
+        this.colors = ['rgba(255, 200, 100, 1)', 'rgba(255, 150, 50, 1)', 'rgba(255, 100, 50, 1)'];
+        this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
+      }
 
-    opacity.value = withDelay(
-      delay,
-      withSequence(
-        withTiming(1, { duration: 50 }),
-        withDelay(
-          duration - 200,
-          withTiming(0, { duration: 200 })
-        )
-      )
-    );
+      update() {
+        this.x += this.velocity.x;
+        this.y += this.velocity.y;
+        this.alpha -= this.decay;
+        this.size *= 0.95;
+      }
 
-    translateX.value = withDelay(
-      delay,
-      withTiming(endX, {
-        duration,
-        easing: Easing.out(Easing.quad),
-      })
-    );
+      draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
 
-    translateY.value = withDelay(
-      delay,
-      withTiming(endY, {
-        duration,
-        easing: Easing.out(Easing.quad),
-      })
-    );
-  }, []);
+    let particles = [];
+    let rocketParticles = [];
+    let rocket = null;
+    let animationId = null;
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-        { scale: scale.value },
-      ],
-      opacity: opacity.value,
-    };
-  });
+    function createExplosion(x, y) {
+      for (let i = 0; i < 60; i++) {
+        const angle = (Math.PI * 2 / 60) * i;
+        const speed = 3 + Math.random() * 5;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        particles.push(new Particle(x, y, color,
+          { x: Math.cos(angle) * speed + (Math.random() - 0.5) * 2, y: Math.sin(angle) * speed + (Math.random() - 0.5) * 2 },
+          1.5 + Math.random() * 2, 'spark'
+        ));
+      }
 
-  // Vary the size for visual interest
-  const size = 8 + Math.random() * 8;
+      for (let i = 0; i < 30; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 5 + Math.random() * 4;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        particles.push(new Particle(x, y, color,
+          { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+          1 + Math.random() * 1.5, 'spark'
+        ));
+      }
 
-  return (
-    <Animated.View style={[styles.particle, { left: originX, top: originY }, animatedStyle]}>
-      <View style={[styles.circle, { width: size, height: size, backgroundColor: color, borderRadius: size / 2 }]} />
-    </Animated.View>
-  );
-};
+      for (let i = 0; i < 25; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1 + Math.random() * 3;
+        particles.push(new Particle(
+          x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 30,
+          'rgba(255, 255, 255, 1)',
+          { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed - 1 },
+          2 + Math.random() * 2, 'glitter'
+        ));
+      }
+
+      setTimeout(() => {
+        for (let i = 0; i < 20; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 2 + Math.random() * 3;
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          particles.push(new Particle(
+            x + (Math.random() - 0.5) * 40, y + (Math.random() - 0.5) * 40,
+            color, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+            1 + Math.random() * 1.5, 'spark'
+          ));
+        }
+      }, 100);
+    }
+
+    function animate() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // Clear with semi-transparent black for trail effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+      ctx.fillRect(0, 0, w, h);
+
+      if (rocket) {
+        for (let i = 0; i < 3; i++) {
+          rocketParticles.push(new RocketParticle(
+            rocket.x + (Math.random() - 0.5) * 6,
+            rocket.y + 5
+          ));
+        }
+
+        rocket.y += rocket.velocity;
+        rocket.velocity *= 0.99;
+
+        ctx.save();
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'rgba(255, 200, 100, 1)';
+        ctx.beginPath();
+        ctx.arc(rocket.x, rocket.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+        ctx.fill();
+        ctx.restore();
+
+        if (rocket.y <= rocket.targetY) {
+          createExplosion(rocket.x, rocket.y);
+          rocket = null;
+        }
+      }
+
+      rocketParticles = rocketParticles.filter(p => p.alpha > 0);
+      rocketParticles.forEach(p => {
+        p.update();
+        p.draw(ctx);
+      });
+
+      particles = particles.filter(p => p.alpha > 0);
+      particles.forEach(p => {
+        p.update();
+        p.draw(ctx);
+      });
+
+      if (particles.length > 0 || rocketParticles.length > 0 || rocket) {
+        animationId = requestAnimationFrame(animate);
+      } else {
+        ctx.clearRect(0, 0, w, h);
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage('complete');
+        }
+      }
+    }
+
+    function launchFirework() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      ctx.clearRect(0, 0, w, h);
+      particles = [];
+      rocketParticles = [];
+
+      rocket = {
+        x: w / 2,
+        y: h + 10,
+        targetY: h * 0.40,
+        velocity: -35
+      };
+
+      if (animationId) cancelAnimationFrame(animationId);
+      animate();
+    }
+
+    // Auto-launch on load
+    launchFirework();
+  </script>
+</body>
+</html>
+`;
 
 const FireworkEffect = ({ active, onComplete }) => {
-  const [showRocket, setShowRocket] = useState(false);
-  const [showBurst, setShowBurst] = useState(false);
-  const [particles, setParticles] = useState([]);
+  const webViewRef = useRef(null);
+  const [key, setKey] = useState(0);
 
   useEffect(() => {
     if (active) {
-      // First show rocket
-      setShowRocket(true);
-      setShowBurst(false);
-      setParticles([]);
-      
-      // After rocket explodes, show burst
-      const burstTimer = setTimeout(() => {
-        setShowRocket(false);
-        setShowBurst(true);
-        
-        // Generate burst particles
-        const newParticles = Array.from({ length: 30 }, (_, i) => ({
-          id: i,
-          color: BURST_COLORS[Math.floor(Math.random() * BURST_COLORS.length)],
-        }));
-        setParticles(newParticles);
-      }, 620);
+      // Force remount WebView to restart animation
+      setKey(prev => prev + 1);
 
-      // Clean up after everything
-      const completeTimer = setTimeout(() => {
-        setShowBurst(false);
-        setParticles([]);
+      // Set timeout for completion
+      const timer = setTimeout(() => {
         onComplete?.();
-      }, 2500);
+      }, 2800);
 
-      return () => {
-        clearTimeout(burstTimer);
-        clearTimeout(completeTimer);
-      };
-    } else {
-      setShowRocket(false);
-      setShowBurst(false);
-      setParticles([]);
+      return () => clearTimeout(timer);
     }
-  }, [active, onComplete]);
+  }, [active]);
 
   if (!active) return null;
 
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
-  
-  const rocketStartY = screenHeight * 0.8;
-  const rocketEndY = screenHeight * 0.2;
-  const burstX = screenWidth / 2;
-  const burstY = screenHeight * 0.2;
-  const rocketColor = '#4ECDC4';
-
   return (
     <View style={styles.container} pointerEvents="none">
-      {showRocket && (
-        <Rocket
-          originY={rocketStartY}
-          targetY={rocketEndY}
-          color={rocketColor}
-          onComplete={() => {
-            setShowBurst(true);
-            const newParticles = Array.from({ length: 30 }, (_, i) => ({
-              id: i,
-              color: BURST_COLORS[Math.floor(Math.random() * BURST_COLORS.length)],
-            }));
-            setParticles(newParticles);
-          }}
-        />
-      )}
-      {showBurst && (
-        <>
-          {particles.map((particle) => (
-            <BurstParticle
-              key={particle.id}
-              index={particle.id}
-              originX={burstX}
-              originY={burstY}
-              color={particle.color}
-            />
-          ))}
-        </>
-      )}
+      <WebView
+        key={key}
+        ref={webViewRef}
+        source={{ html: FIREWORK_HTML }}
+        style={styles.webview}
+        scrollEnabled={false}
+        bounces={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        overScrollMode="never"
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        originWhitelist={['*']}
+        allowsInlineMediaPlayback={true}
+        mediaPlaybackRequiresUserAction={false}
+        // iOS specific for transparency
+        opaque={false}
+        // Android specific
+        androidLayerType="hardware"
+        androidHardwareAccelerationDisabled={false}
+        // Allow mixed content
+        mixedContentMode="always"
+        // Styling
+        containerStyle={styles.webviewContainer}
+      />
     </View>
   );
 };
@@ -232,41 +362,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    width: '100%',
-    height: '100%',
-    zIndex: 1000,
+    zIndex: 9999,
+    elevation: 9999,
   },
-  rocket: {
-    position: 'absolute',
-    left: '50%',
-    width: 4,
-    height: 20,
-    marginLeft: -2,
+  webviewContainer: {
+    backgroundColor: 'transparent',
   },
-  rocketFlame: {
-    position: 'absolute',
-    bottom: -15,
-    left: -3,
-    width: 10,
-    height: 15,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  flame: {
-    width: 10,
-    height: 15,
-    borderBottomLeftRadius: 5,
-    borderBottomRightRadius: 5,
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
-  },
-  particle: {
-    position: 'absolute',
-  },
-  circle: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  webview: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
 });
 
