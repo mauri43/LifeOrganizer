@@ -131,11 +131,6 @@ useEffect(() => {
   fetchUserProfile();
 }, []); // Fetch on mount
 
-    useEffect(() => {
-      fetchUserProfile();
-    }, []); // Fetch on mount
-    
-
   const handleSaveName = async () => {
     if (!tempName.trim()) {
       Alert.alert('Error', 'Name cannot be empty');

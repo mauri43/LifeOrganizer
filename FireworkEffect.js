@@ -320,7 +320,7 @@ const FireworkEffect = ({ active, onComplete }) => {
 
       return () => clearTimeout(timer);
     }
-  }, [active]);
+  }, [active, onComplete]);
 
   if (!active) return null;
 

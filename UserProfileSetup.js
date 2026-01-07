@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -97,7 +97,7 @@ export default function UserProfileSetup({ onComplete, theme = 'light' }) {
   const isFormValid = name.trim() && username.trim();
 
   // Dynamic styles based on theme
-  const dynamicStyles = {
+  const dynamicStyles = useMemo(() => ({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -232,7 +232,7 @@ export default function UserProfileSetup({ onComplete, theme = 'light' }) {
       fontSize: 17,
       letterSpacing: 0.3,
     },
-  };
+  }), [colors, isDark])
 
   return (
     <SafeAreaView style={dynamicStyles.container}>

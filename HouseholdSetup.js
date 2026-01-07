@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -161,7 +161,7 @@ export default function HouseholdSetup({ onHouseholdSet, allowSkip = false, them
   };
 
   // Dynamic styles based on theme
-  const dynamicStyles = {
+  const dynamicStyles = useMemo(() => ({
     safeArea: {
       flex: 1,
       backgroundColor: colors.background,
@@ -342,7 +342,7 @@ export default function HouseholdSetup({ onHouseholdSet, allowSkip = false, them
       fontSize: 17,
       letterSpacing: 0.3,
     },
-  };
+  }), [colors, isDark])
 
   // Choose Mode Screen
   if (mode === 'choose') {

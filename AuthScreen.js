@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -138,7 +138,7 @@ export default function AuthScreen({ onAuthSuccess, theme = 'light' }) {
   };
 
   // Dynamic styles based on theme
-  const dynamicStyles = {
+  const dynamicStyles = useMemo(() => ({
     safeArea: {
       flex: 1,
       backgroundColor: colors.background,
@@ -273,7 +273,7 @@ export default function AuthScreen({ onAuthSuccess, theme = 'light' }) {
       fontSize: 14,
       textDecorationLine: 'underline',
     },
-  };
+  }), [colors, isDark])
 
   return (
     <SafeAreaView style={dynamicStyles.safeArea}>

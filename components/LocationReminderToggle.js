@@ -21,8 +21,8 @@ const LocationReminderToggle = ({
     <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }, style]}>
       <View style={styles.labelContainer}>
         <View style={styles.iconRow}>
-          <MapPin size={18} color="#10B981" />
-          <Bell size={16} color="#F59E0B" style={styles.bellIcon} />
+          <MapPin size={18} color={colors.success} />
+          <Bell size={16} color={colors.warning} style={styles.bellIcon} />
         </View>
         <View style={styles.textContainer}>
           <Text style={[styles.label, { color: colors.text }]}>Location Reminder</Text>
@@ -34,8 +34,8 @@ const LocationReminderToggle = ({
       <Switch
         value={enabled}
         onValueChange={onToggle}
-        trackColor={{ false: colors.border, true: '#10B981' }}
-        thumbColor={enabled ? '#fff' : '#f5f5f4'}
+        trackColor={{ false: colors.border, true: colors.success }}
+        thumbColor={enabled ? "#fff" : colors.surface}
       />
     </View>
   );

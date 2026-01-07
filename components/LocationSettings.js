@@ -22,7 +22,7 @@ import {
 import { getThemeColors } from '../theme';
 import locationReminderService from '../services/LocationReminderService';
 
-const LocationSettings = ({ theme = 'light', onClose }) => {
+const LocationSettings = ({ theme = 'light' }) => {
   const colors = getThemeColors(theme);
   const [settings, setSettings] = useState(locationReminderService.getSettings());
   const [geofences, setGeofences] = useState([]);
@@ -271,7 +271,7 @@ const LocationSettings = ({ theme = 'light', onClose }) => {
         </Text>
         <View style={dynamicStyles.settingItem}>
           <View style={dynamicStyles.settingLeft}>
-            <MapPin size={20} color="#10B981" />
+            <MapPin size={20} color={colors.success} />
             <View>
               <Text style={dynamicStyles.settingLabel}>Enable Location Reminders</Text>
               <Text style={dynamicStyles.settingDescription}>
@@ -282,8 +282,8 @@ const LocationSettings = ({ theme = 'light', onClose }) => {
           <Switch
             value={settings.enabled}
             onValueChange={(value) => handleSettingChange('enabled', value)}
-            trackColor={{ false: colors.border, true: '#10B981' }}
-            thumbColor={settings.enabled ? '#fff' : '#f5f5f4'}
+            trackColor={{ false: colors.border, true: colors.success }}
+            thumbColor={settings.enabled ? "#fff" : colors.surface}
           />
         </View>
       </View>

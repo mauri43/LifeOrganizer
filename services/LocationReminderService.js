@@ -125,7 +125,8 @@ class LocationReminderService {
     try {
       const savedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
       if (savedSettings) {
-        this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
+        this.notificationSubscription = null;
+    this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
       }
     } catch (error) {
       console.error('Error loading location reminder settings:', error);
@@ -317,7 +318,7 @@ class LocationReminderService {
   // Get items triggered today
   async getTriggeredToday() {
     try {
-      const today = new Date().toDateString();
+      const today = new Date().toISOString().split('T')[0]; // UTC date: YYYY-MM-DD
       const data = await AsyncStorage.getItem(TRIGGERED_TODAY_KEY);
       if (data) {
         const parsed = JSON.parse(data);
@@ -334,7 +335,7 @@ class LocationReminderService {
   // Record an item as triggered today
   async recordTriggeredToday(geofenceKey) {
     try {
-      const today = new Date().toDateString();
+      const today = new Date().toISOString().split('T')[0]; // UTC date: YYYY-MM-DD
       let triggeredToday = await this.getTriggeredToday();
       if (!triggeredToday.includes(geofenceKey)) {
         triggeredToday.push(geofenceKey);
