@@ -14,7 +14,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
 import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { getThemeColors } from './theme';
 
@@ -25,7 +25,6 @@ export default function AuthScreen({ onAuthSuccess, theme = 'light' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
 
   // Get theme colors
@@ -84,7 +83,7 @@ export default function AuthScreen({ onAuthSuccess, theme = 'light' }) {
     try {
       let loginEmail = email.trim();
 
-      if (!isLogin && !email.includes('@')) {
+      if (isLogin && !email.includes('@')) {
         const fetchedEmail = await getEmailFromUsername(email.trim());
         if (!fetchedEmail) {
           Alert.alert('Not Found', 'We couldn\'t find that username.');
@@ -311,18 +310,18 @@ export default function AuthScreen({ onAuthSuccess, theme = 'light' }) {
           <View style={styles.form}>
             <View style={styles.inputWrapper}>
               <Text style={dynamicStyles.inputLabel}>
-                {isSignUp ? 'Email' : 'Email or Username'}
+                {!isLogin ? 'Email' : 'Email or Username'}
               </Text>
               <TextInput
                 style={[
                   dynamicStyles.input,
                   focusedField === 'email' && dynamicStyles.inputFocused,
                 ]}
-                placeholder={isSignUp ? 'your@email.com' : 'Enter email or username'}
+                placeholder={!isLogin ? 'your@email.com' : 'Enter email or username'}
                 placeholderTextColor={colors.placeholder}
                 value={email}
                 onChangeText={setEmail}
-                keyboardType={isSignUp ? 'email-address' : 'default'}
+                keyboardType={!isLogin ? 'email-address' : 'default'}
                 autoCapitalize="none"
                 onFocus={() => setFocusedField('email')}
                 onBlur={() => setFocusedField(null)}
@@ -379,7 +378,7 @@ export default function AuthScreen({ onAuthSuccess, theme = 'light' }) {
               </Text>
             </TouchableOpacity>
 
-            {!isSignUp && (
+            {isLogin && (
               <TouchableOpacity
                 style={styles.forgotPasswordButton}
                 onPress={handleForgotPassword}
