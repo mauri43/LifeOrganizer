@@ -125,8 +125,7 @@ class LocationReminderService {
     try {
       const savedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
       if (savedSettings) {
-        this.notificationSubscription = null;
-    this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
+        this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
       }
     } catch (error) {
       console.error('Error loading location reminder settings:', error);

@@ -45,29 +45,30 @@ export function ThemeProvider({ children }) {
     }
   };
 
-  // Save theme preference when it changes
-  const setThemeMode = async (mode) => {
-    try {
-      await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
-      setThemeModeState(mode);
-    } catch (error) {
-      console.error('Error saving theme preference:', error);
-    }
-  };
-
-  // Toggle between light and dark (skips system)
-  const toggleTheme = () => {
-    const newMode = resolvedTheme === 'dark' ? 'light' : 'dark';
-    setThemeMode(newMode);
-  };
-
   // Resolve the actual theme based on mode and system preference
+  // IMPORTANT: This must be defined BEFORE toggleTheme to avoid TDZ error
   const resolvedTheme = useMemo(() => {
     if (themeMode === 'system') {
       return systemColorScheme || 'light';
     }
     return themeMode;
   }, [themeMode, systemColorScheme]);
+
+  // Save theme preference when it changes - wrapped with useCallback
+  const setThemeMode = useCallback(async (mode) => {
+    try {
+      await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
+      setThemeModeState(mode);
+    } catch (error) {
+      console.error('Error saving theme preference:', error);
+    }
+  }, []);
+
+  // Toggle between light and dark (skips system) - wrapped with useCallback
+  const toggleTheme = useCallback(() => {
+    const newMode = resolvedTheme === 'dark' ? 'light' : 'dark';
+    setThemeMode(newMode);
+  }, [resolvedTheme, setThemeMode]);
 
   // Get the color palette for the resolved theme
   const colors = useMemo(() => {
@@ -84,7 +85,7 @@ export function ThemeProvider({ children }) {
     setThemeMode,
     toggleTheme,
     isLoading,
-  }), [resolvedTheme, themeMode, colors, isDark, isLoading]);
+  }), [resolvedTheme, themeMode, colors, isDark, setThemeMode, toggleTheme, isLoading]);
 
   return (
     <ThemeContext.Provider value={value}>
