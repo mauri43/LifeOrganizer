@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "plugins": [
       [
         "expo-local-authentication",
@@ -35,14 +35,7 @@
         }
       ],
       "./plugins/withIosWidget",
-      "./plugins/withIosShareExtension",
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone for voice-to-text ideas.",
-          "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to use speech recognition to transcribe your voice into ideas."
-        }
-      ]
+      "./plugins/withIosShareExtension"
     ],
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -73,7 +66,7 @@
           "group.com.mauricio.lifeorganizer"
         ]
       },
-      "buildNumber": "23"
+      "buildNumber": "25"
     },
     "android": {
       "adaptiveIcon": {

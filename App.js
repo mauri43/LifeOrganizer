@@ -3301,7 +3301,7 @@ export default function App() {
     // Lazy load the speech recognition module
     if (!ExpoSpeechRecognitionModule) {
       try {
-        const speechModule = require('expo-speech-recognition');
+        const speechModule = null; // require('expo-speech-recognition'); DISABLED
         if (speechModule?.ExpoSpeechRecognitionModule) {
           ExpoSpeechRecognitionModule = speechModule.ExpoSpeechRecognitionModule;
           speechRecognitionAvailable = true;
