@@ -64,9 +64,14 @@ class LocationReminderService {
       // Note: Notification handler is set once in services/notificationsHandler.js
       // to prevent "runtime not ready" crashes from duplicate registration
 
+      // TEMP DIAGNOSTIC: Disabled to isolate "runtime not ready" crash
+      const DEBUG_DISABLE_LOCATION_BG = true;
+
       // Start background location tracking if enabled
-      if (this.settings.enabled && this.geofences.length > 0) {
+      if (this.settings.enabled && this.geofences.length > 0 && !DEBUG_DISABLE_LOCATION_BG) {
         await this.startBackgroundTracking();
+      } else if (DEBUG_DISABLE_LOCATION_BG) {
+        console.log('[DIAGNOSTIC] Background location tracking disabled');
       }
 
       this.isInitialized = true;

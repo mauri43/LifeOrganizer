@@ -927,7 +927,13 @@ export default function App() {
   }, [householdId, user]);
 
   // Process shared recipe URLs from iOS Share Extension
+  // TEMP DIAGNOSTIC: Disabled to isolate "runtime not ready" crash
+  const DEBUG_DISABLE_SHARE_EXTENSION = true;
   useEffect(() => {
+    if (DEBUG_DISABLE_SHARE_EXTENSION) {
+      console.log('[DIAGNOSTIC] Share extension processing disabled');
+      return;
+    }
     if (user && householdId && Platform.OS === 'ios') {
       // Process any queued recipe URLs when app opens
       processRecipeQueue(functions, db, householdId);
@@ -1038,8 +1044,14 @@ export default function App() {
   }, [userLocation]);
 
   // Sync widget data whenever relevant data changes
+  // TEMP DIAGNOSTIC: Disabled to isolate "runtime not ready" crash
+  const DEBUG_DISABLE_WIDGET_BRIDGE = true;
   useEffect(() => {
     if (!user || Platform.OS !== 'ios') return;
+    if (DEBUG_DISABLE_WIDGET_BRIDGE) {
+      console.log('[DIAGNOSTIC] Widget native bridge disabled');
+      return;
+    }
 
     const syncData = async () => {
       try {
