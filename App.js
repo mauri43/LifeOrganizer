@@ -136,14 +136,8 @@ const TAG_COLORS = [
   '#64748b', // slate
 ];
 
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Note: Notification handler is set once in services/notificationsHandler.js
+// to prevent "runtime not ready" crashes from duplicate registration
 
 export default function App() {
   // Load custom fonts (non-blocking, falls back to system fonts)
@@ -1241,16 +1235,42 @@ export default function App() {
     loadSettings();
   }, []);
 
-  // Initialize location reminder service
+  // Initialize location reminder service - deferred until app is active to prevent "runtime not ready" crashes
   useEffect(() => {
+    let isMounted = true;
+
     const initLocationReminders = async () => {
       try {
-        await locationReminderService.initialize();
+        // Small delay to ensure runtime is fully ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (isMounted) {
+          await locationReminderService.initialize();
+        }
       } catch (error) {
         console.error('Error initializing location reminders:', error);
       }
     };
-    initLocationReminders();
+
+    // Only initialize when app is active
+    if (AppState.currentState === 'active') {
+      initLocationReminders();
+    } else {
+      // Wait for app to become active
+      const subscription = AppState.addEventListener('change', (nextState) => {
+        if (nextState === 'active' && isMounted) {
+          initLocationReminders();
+          subscription.remove();
+        }
+      });
+      return () => {
+        isMounted = false;
+        subscription.remove();
+      };
+    }
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
