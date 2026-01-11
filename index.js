@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import './services/notificationsHandler'; // Single notification handler - must be early
 import { registerRootComponent } from 'expo';
 
 import App from './App';

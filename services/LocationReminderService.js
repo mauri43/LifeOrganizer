@@ -61,8 +61,8 @@ class LocationReminderService {
         return false;
       }
 
-      // Configure notifications
-      await this.configureNotifications();
+      // Note: Notification handler is set once in services/notificationsHandler.js
+      // to prevent "runtime not ready" crashes from duplicate registration
 
       // Start background location tracking if enabled
       if (this.settings.enabled && this.geofences.length > 0) {
@@ -107,17 +107,6 @@ class LocationReminderService {
       console.error('Error requesting permissions:', error);
       return false;
     }
-  }
-
-  // Configure notification handler
-  async configureNotifications() {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    });
   }
 
   // Load settings from storage
