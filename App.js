@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { GOOGLE_PLACES_API_KEY } from '@env';
 
 // Speech recognition will be loaded lazily after app mounts
 let ExpoSpeechRecognitionModule = null;
@@ -22,7 +23,7 @@ import {
   SourceSans3_500Medium,
   SourceSans3_600SemiBold,
 } from '@expo-google-fonts/source-sans-3';
-import { doc, getDoc, collection, addDoc, deleteDoc, updateDoc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, deleteDoc, updateDoc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -30,6 +31,7 @@ import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import * as ExpoCalendar from 'expo-calendar';
 import * as Clipboard from 'expo-clipboard';
+import * as Linking from 'expo-linking';
 import HouseholdSetup from './HouseholdSetup';
 import { auth, db, functions } from './firebase';
 import AuthScreen from './AuthScreen';
@@ -40,7 +42,10 @@ import { syncWidgetData, prepareWidgetData } from './widgetDataSync';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { lightColors, darkColors, getThemeColors, getCategoryColor as getThemeCategoryColor, getPriorityColor as getThemePriorityColor } from './theme';
 import { processRecipeQueue } from './recipeQueueProcessor';
-import DraggableFlatList from 'react-native-draggable-flatlist';
+// TEMPORARILY DISABLED: react-native-draggable-flatlist crashes in Expo Go with New Architecture
+// TODO: Re-enable when Expo Go supports reanimated properly or when using a development build
+// import DraggableFlatList from 'react-native-draggable-flatlist';
+import { FlatList } from 'react-native'; // Using regular FlatList as fallback
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import FireworkEffect from './FireworkEffect';
 import LocationReminderToggle from './components/LocationReminderToggle';
@@ -58,7 +63,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
-  Linking,
   Alert,
   AppState,
   Image,
@@ -136,14 +140,8 @@ const TAG_COLORS = [
   '#64748b', // slate
 ];
 
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Note: Notification handler is set once in services/notificationsHandler.js
+// to prevent "runtime not ready" crashes from duplicate registration
 
 export default function App() {
   // Load custom fonts (non-blocking, falls back to system fonts)
@@ -231,6 +229,7 @@ export default function App() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const voiceTranscriptRef = useRef('');
   const shouldProcessVoiceRef = useRef(false);
+  const speechListenersRef = useRef([]); // Moved here from line ~3313 to fix hooks order
 
   const [hasProfile, setHasProfile] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
@@ -401,6 +400,35 @@ export default function App() {
     household: true,
     other: true,
   });
+
+  // Store Tags for Groceries
+  const [stores, setStores] = useState([]);
+  const [selectedStoreFilter, setSelectedStoreFilter] = useState('all');
+  const [newStoreName, setNewStoreName] = useState('');
+  const [newStoreColor, setNewStoreColor] = useState('#10B981');
+  const [editingStore, setEditingStore] = useState(null);
+  const [selectedStoreId, setSelectedStoreId] = useState(null);
+  const [suggestedStoreId, setSuggestedStoreId] = useState(null);
+  const [groceryHistory, setGroceryHistory] = useState({});
+
+  // Paste Multiple Groceries
+  const [groceryPasteMode, setGroceryPasteMode] = useState(false);
+  const [groceryPasteText, setGroceryPasteText] = useState('');
+  const [groceryPastePreview, setGroceryPastePreview] = useState([]);
+  const [showGroceryPastePreview, setShowGroceryPastePreview] = useState(false);
+  const [pasteStoreId, setPasteStoreId] = useState(null);
+
+  const STORE_COLORS = [
+    '#EF4444', // Red
+    '#F97316', // Orange
+    '#F59E0B', // Amber
+    '#10B981', // Green
+    '#06B6D4', // Cyan
+    '#3B82F6', // Blue
+    '#8B5CF6', // Purple
+    '#EC4899', // Pink
+  ];
+
   const [theme, setTheme] = useState('light');
   const [showSettings, setShowSettings] = useState(false);
   const [tabVisibility, setTabVisibility] = useState({
@@ -837,6 +865,8 @@ export default function App() {
     let unsubscribeItems = null;
     let unsubscribeActivities = null;
     let unsubscribeRecipes = null;
+    let unsubscribeStores = null;
+    let unsubscribeGroceryHistory = null;
     let householdUnsubscribe = null;
 
     if (!householdId) {
@@ -897,6 +927,32 @@ export default function App() {
         setRecipes(recipesData);
       });
 
+      // Listen to stores (for grocery store tags)
+      const storesQuery = query(
+        collection(db, 'households', householdId, 'stores')
+      );
+      unsubscribeStores = onSnapshot(storesQuery, (snapshot) => {
+        if (!auth.currentUser) return;
+        const storesData = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        setStores(storesData);
+      });
+
+      // Listen to grocery history (for smart suggestions)
+      const historyQuery = query(
+        collection(db, 'households', householdId, 'groceryHistory')
+      );
+      unsubscribeGroceryHistory = onSnapshot(historyQuery, (snapshot) => {
+        if (!auth.currentUser) return;
+        const historyMap = {};
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          historyMap[data.title?.toLowerCase()] = { id: doc.id, ...data };
+        });
+        setGroceryHistory(historyMap);
+      });
+
       // Check admin status and permission mode (initial load)
       (async () => {
         try {
@@ -921,6 +977,8 @@ export default function App() {
       if (unsubscribeItems) unsubscribeItems();
       if (unsubscribeActivities) unsubscribeActivities();
       if (unsubscribeRecipes) unsubscribeRecipes();
+      if (unsubscribeStores) unsubscribeStores();
+      if (unsubscribeGroceryHistory) unsubscribeGroceryHistory();
       if (householdUnsubscribe) householdUnsubscribe();
       unsubscribePeople();
       unsubscribeGiftIdeas();
@@ -939,6 +997,38 @@ export default function App() {
       processRecipeQueue(functions, db, householdId);
     }
   }, [user, householdId]);
+
+  // Deep link handler for Action Button / URL schemes
+  const handleDeepLink = useCallback((url) => {
+    if (!url) return;
+
+    // Parse: lifeorganizer://ideas → 'ideas'
+    const route = url.replace(/.*?:\/\//g, '').split('/')[0]?.toLowerCase();
+
+    // Valid deep link routes (matching tab names)
+    const validTabs = ['today', 'calendar', 'todo', 'groceries', 'ideas', 'gifts', 'food', 'all'];
+
+    if (validTabs.includes(route)) {
+      setActiveTab(route);
+    }
+  }, []);
+
+  // Handle deep links (Action Button, external URLs)
+  useEffect(() => {
+    if (!user) return; // Only handle after authentication
+
+    // Handle URL that launched the app
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
+
+    // Handle URLs while app is open
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    return () => subscription.remove();
+  }, [user, handleDeepLink]);
 
   useEffect(() => {
   }, [showDatePicker]);
@@ -1002,7 +1092,7 @@ export default function App() {
 
         const { latitude, longitude } = userLocation;
         const currentWeatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${OPENWEATHER_API_KEY}&units=imperial`;
-        const forecastUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${latitude}&lon=${longitude}&appid=${OPENWEATHER_API_KEY}&units=imperial&exclude=minutely,hourly,alerts`;
+        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${OPENWEATHER_API_KEY}&units=imperial`;
         
         const [currentResponse, forecastResponse] = await Promise.all([
           fetch(currentWeatherUrl),
@@ -1019,8 +1109,25 @@ export default function App() {
           setWeatherData(null);
         }
 
-        if (!forecastData.cod && forecastData.daily) {
-          setWeatherForecast(forecastData);
+        // Convert 2.5 forecast format (3-hour intervals) to daily format
+        if (forecastData.cod === '200' && forecastData.list) {
+          // Group forecast by day and get daily min/max temps
+          const dailyMap = {};
+          forecastData.list.forEach(item => {
+            const date = item.dt_txt.split(' ')[0];
+            if (!dailyMap[date]) {
+              dailyMap[date] = {
+                dt: item.dt,
+                temp: { min: item.main.temp_min, max: item.main.temp_max },
+                weather: item.weather,
+              };
+            } else {
+              dailyMap[date].temp.min = Math.min(dailyMap[date].temp.min, item.main.temp_min);
+              dailyMap[date].temp.max = Math.max(dailyMap[date].temp.max, item.main.temp_max);
+            }
+          });
+          const daily = Object.values(dailyMap).slice(0, 7);
+          setWeatherForecast({ daily });
         } else {
           if (forecastData.message) {
             console.error('Weather forecast error:', forecastData.message);
@@ -1241,16 +1348,42 @@ export default function App() {
     loadSettings();
   }, []);
 
-  // Initialize location reminder service
+  // Initialize location reminder service - deferred until app is active to prevent "runtime not ready" crashes
   useEffect(() => {
+    let isMounted = true;
+
     const initLocationReminders = async () => {
       try {
-        await locationReminderService.initialize();
+        // Small delay to ensure runtime is fully ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (isMounted) {
+          await locationReminderService.initialize();
+        }
       } catch (error) {
         console.error('Error initializing location reminders:', error);
       }
     };
-    initLocationReminders();
+
+    // Only initialize when app is active
+    if (AppState.currentState === 'active') {
+      initLocationReminders();
+    } else {
+      // Wait for app to become active
+      const subscription = AppState.addEventListener('change', (nextState) => {
+        if (nextState === 'active' && isMounted) {
+          initLocationReminders();
+          subscription.remove();
+        }
+      });
+      return () => {
+        isMounted = false;
+        subscription.remove();
+      };
+    }
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -1435,7 +1568,7 @@ export default function App() {
         setCheckingProfile(false);
       }
     });
-  
+
     return unsubscribe;
   }, []);
 
@@ -1451,6 +1584,7 @@ export default function App() {
       </GestureHandlerRootView>
     );
   }
+
   // Show Face ID lock screen if authentication required
   if (user && isFaceIdEnabled && !isFaceIdAuthenticated) {
   return (
@@ -1477,11 +1611,26 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <UserProfileSetup
           theme={theme}
-          onComplete={() => {
+          onComplete={async () => {
             setHasProfile(true);
             // Ensure household check state is ready for new users
             setCheckingHousehold(false);
             setSkippedHousehold(false);
+            // Fetch the user's name from Firestore
+            try {
+              const currentUser = auth.currentUser;
+              if (currentUser) {
+                const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  if (userData.name) {
+                    setCurrentUserName(userData.name);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching user name:', error);
+            }
           }}
         />
       </GestureHandlerRootView>
@@ -1540,11 +1689,134 @@ export default function App() {
     return personData ? { name: personData.name, birthday: personData.birthday } : { name };
   });
 
+  // ==================== Store CRUD Functions ====================
+
+  // Get store by ID
+  const getStoreById = (storeId) => stores.find(s => s.id === storeId);
+
+  // Add new store
+  const addStore = async () => {
+    if (!newStoreName.trim() || !householdId) return;
+
+    try {
+      await addDoc(collection(db, 'households', householdId, 'stores'), {
+        name: newStoreName.trim(),
+        color: newStoreColor,
+        createdAt: new Date().toISOString(),
+        createdBy: user.uid,
+        order: stores.length
+      });
+
+      setNewStoreName('');
+      setNewStoreColor('#10B981');
+    } catch (error) {
+      console.error('Error adding store:', error);
+      Alert.alert('Error', 'Failed to add store');
+    }
+  };
+
+  // Update store
+  const updateStore = async (storeId, updates) => {
+    if (!householdId) return;
+
+    try {
+      await updateDoc(doc(db, 'households', householdId, 'stores', storeId), updates);
+      setEditingStore(null);
+    } catch (error) {
+      console.error('Error updating store:', error);
+      Alert.alert('Error', 'Failed to update store');
+    }
+  };
+
+  // Delete store (also removes from all grocery items)
+  const deleteStore = async (storeId) => {
+    Alert.alert(
+      'Delete Store',
+      'This will remove the store tag from all grocery items. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Delete store
+              await deleteDoc(doc(db, 'households', householdId, 'stores', storeId));
+
+              // Clear storeId from all grocery items with this store
+              const batch = writeBatch(db);
+              items
+                .filter(item => item.category === 'groceries' && item.storeId === storeId)
+                .forEach(item => {
+                  batch.update(doc(db, 'households', householdId, 'items', item.id), {
+                    storeId: null
+                  });
+                });
+              await batch.commit();
+
+              // Reset filter if current filter was deleted store
+              if (selectedStoreFilter === storeId) {
+                setSelectedStoreFilter('all');
+              }
+            } catch (error) {
+              console.error('Error deleting store:', error);
+              Alert.alert('Error', 'Failed to delete store');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Get suggested store for item title (smart suggestions)
+  const getSuggestedStore = (title) => {
+    if (!title) return null;
+    const history = groceryHistory[title.toLowerCase().trim()];
+    return history?.storeId || null;
+  };
+
+  // Update grocery history when item is completed with a store
+  const updateGroceryHistory = async (item) => {
+    if (!item.storeId || item.category !== 'groceries' || !householdId) return;
+
+    try {
+      const normalizedTitle = item.title.toLowerCase().trim().replace(/\s+/g, '_');
+      const historyRef = doc(db, 'households', householdId, 'groceryHistory', normalizedTitle);
+      const existing = groceryHistory[item.title.toLowerCase().trim()];
+
+      if (existing) {
+        const newCounts = { ...(existing.storeCounts || {}) };
+        newCounts[item.storeId] = (newCounts[item.storeId] || 0) + 1;
+
+        // Find most frequent store
+        const mostFrequentStore = Object.entries(newCounts)
+          .sort((a, b) => b[1] - a[1])[0][0];
+
+        await updateDoc(historyRef, {
+          storeCounts: newCounts,
+          storeId: mostFrequentStore,
+          lastUsedAt: new Date().toISOString()
+        });
+      } else {
+        await setDoc(historyRef, {
+          title: item.title,
+          storeId: item.storeId,
+          storeCounts: { [item.storeId]: 1 },
+          lastUsedAt: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.error('Error updating grocery history:', error);
+    }
+  };
+
+  // ==================== End Store CRUD Functions ====================
+
   const addItem = async () => {
     if (!newItem.title.trim() || isSubmitting) return;
-    
+
     setIsSubmitting(true);
-    
+
     const currentUser = auth.currentUser;
     if (!currentUser) {
       Alert.alert('Error', 'You must be logged in to add items');
@@ -1804,7 +2076,12 @@ export default function App() {
           if (category === 'groceries' && newItem.price) {
             itemData.price = parseFloat(newItem.price) || 0;
           }
-  
+
+          // Add store tag for groceries
+          if (category === 'groceries' && selectedStoreId) {
+            itemData.storeId = selectedStoreId;
+          }
+
           if (category === 'restaurants' && newItem.latitude && newItem.longitude) {
             itemData.location = {
               address: newItem.address,
@@ -1858,6 +2135,8 @@ export default function App() {
         placeId: '',
         locationReminder: true,
       });
+      setSelectedStoreId(null);
+      setSuggestedStoreId(null);
       setShowAddForm(false);
     } catch (error) {
       console.error('Error adding item:', error);
@@ -2053,6 +2332,11 @@ export default function App() {
       }
       
       setAddItemType(item.category);
+
+      // Load existing store for groceries
+      if (item.category === 'groceries') {
+        setSelectedStoreId(item.storeId || null);
+      }
     }
     setShowAddForm(true);
   };
@@ -2338,7 +2622,12 @@ export default function App() {
         if (editingItem.category === 'groceries' && newItem.price) {
           itemData.price = parseFloat(newItem.price) || 0;
         }
-  
+
+        // Handle store tag for groceries
+        if (editingItem.category === 'groceries') {
+          itemData.storeId = selectedStoreId || null;
+        }
+
         if (editingItem.category === 'restaurants') {
           if (newItem.latitude && newItem.longitude) {
             itemData.location = {
@@ -2657,6 +2946,10 @@ export default function App() {
             const updateData = { completed: !item.completed };
             if (item.category === 'groceries' && !item.completed) {
               updateData.lastCompleted = new Date().toISOString();
+              // Update grocery history for smart store suggestions
+              if (item.storeId) {
+                updateGroceryHistory(item);
+              }
             }
             updateDoc(doc(db, 'households', householdId, 'items', id), updateData).catch(error => {
               console.error('Error toggling item:', error);
@@ -3097,7 +3390,12 @@ export default function App() {
         item.title.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
+
+    // Filter groceries by store
+    if (activeTab === 'groceries' && selectedStoreFilter !== 'all') {
+      filtered = filtered.filter(item => item.storeId === selectedStoreFilter);
+    }
+
     // For ideas tab, apply filter and sort
     if (activeTab === 'ideas') {
       // Apply personal/household filter
@@ -3285,8 +3583,7 @@ export default function App() {
   };
 
   // Voice recording functions for Ideas tab
-  // Event listener subscriptions stored for cleanup
-  const speechListenersRef = useRef([]);
+  // Event listener subscriptions stored for cleanup (speechListenersRef declared at top with other refs)
 
   const cleanupSpeechListeners = () => {
     speechListenersRef.current.forEach(sub => {
@@ -3301,7 +3598,7 @@ export default function App() {
     // Lazy load the speech recognition module
     if (!ExpoSpeechRecognitionModule) {
       try {
-        const speechModule = require('expo-speech-recognition');
+        const speechModule = null; // require('expo-speech-recognition'); DISABLED
         if (speechModule?.ExpoSpeechRecognitionModule) {
           ExpoSpeechRecognitionModule = speechModule.ExpoSpeechRecognitionModule;
           speechRecognitionAvailable = true;
@@ -3532,6 +3829,287 @@ export default function App() {
     return item.subcategory || inferGrocerySubcategory(item.title);
   };
 
+  // Parse pasted grocery list and categorize items
+  const parseGroceryPasteText = (text) => {
+    if (!text.trim()) return [];
+
+    const lines = text.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    return lines.map(title => ({
+      title,
+      subcategory: inferGrocerySubcategory(title),
+    }));
+  };
+
+  // Get emoji for grocery category
+  const getGroceryCategoryEmoji = (subcategory) => {
+    const emojiMap = {
+      produce: '🥬',
+      dairy: '🥛',
+      meat: '🍗',
+      bakery: '🍞',
+      frozen: '🧊',
+      beverages: '🥤',
+      household: '🧹',
+      pantry: '🥫',
+      other: '📦',
+    };
+    return emojiMap[subcategory] || '📦';
+  };
+
+  // Bulk create grocery items from paste
+  const bulkCreateGroceryItems = async () => {
+    if (!householdId || groceryPastePreview.length === 0) return;
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      groceryPastePreview.forEach(item => {
+        const docRef = doc(collection(db, 'households', householdId, 'items'));
+        batch.set(docRef, {
+          title: item.title,
+          category: 'groceries',
+          subcategory: item.subcategory,
+          storeId: pasteStoreId || null,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser.uid,
+        });
+      });
+
+      await batch.commit();
+
+      // Reset paste mode
+      setGroceryPasteMode(false);
+      setGroceryPasteText('');
+      setGroceryPastePreview([]);
+      setShowGroceryPastePreview(false);
+      setPasteStoreId(null);
+      setShowAddForm(false);
+
+    } catch (error) {
+      console.error('Error bulk creating grocery items:', error);
+      Alert.alert('Error', 'Failed to create items. Please try again.');
+    }
+  };
+
+  // Clear completed grocery items
+  const clearCompletedGroceries = async () => {
+    if (!householdId) return;
+
+    const completedItems = items.filter(item => item.category === 'groceries' && item.completed);
+    if (completedItems.length === 0) return;
+
+    try {
+      const batch = writeBatch(db);
+      completedItems.forEach(item => {
+        batch.delete(doc(db, 'households', householdId, 'items', item.id));
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error('Error clearing completed groceries:', error);
+      Alert.alert('Error', 'Failed to clear items. Please try again.');
+    }
+  };
+
+  // Clear all grocery items (with confirmation)
+  const clearAllGroceries = () => {
+    const groceryItems = items.filter(item => item.category === 'groceries');
+    if (groceryItems.length === 0) return;
+
+    Alert.alert(
+      'Clear All Groceries',
+      `Are you sure you want to delete all ${groceryItems.length} grocery items?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            if (!householdId) return;
+            try {
+              const batch = writeBatch(db);
+              groceryItems.forEach(item => {
+                batch.delete(doc(db, 'households', householdId, 'items', item.id));
+              });
+              await batch.commit();
+            } catch (error) {
+              console.error('Error clearing all groceries:', error);
+              Alert.alert('Error', 'Failed to clear items. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Clear completed tasks
+  const clearCompletedTasks = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    // Get all completed tasks (both household and personal)
+    const completedHouseholdTasks = householdId
+      ? items.filter(item => item.category === 'todo' && item.completed)
+      : [];
+    const completedPersonalTasks = personalTasks.filter(task => task.completed);
+
+    if (completedHouseholdTasks.length === 0 && completedPersonalTasks.length === 0) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      // Delete completed household tasks
+      completedHouseholdTasks.forEach(item => {
+        batch.delete(doc(db, 'households', householdId, 'items', item.id));
+      });
+
+      // Delete completed personal tasks
+      completedPersonalTasks.forEach(task => {
+        batch.delete(doc(db, 'users', currentUser.uid, 'personalTasks', task.id));
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error('Error clearing completed tasks:', error);
+      Alert.alert('Error', 'Failed to clear tasks. Please try again.');
+    }
+  };
+
+  // Clear all tasks (with confirmation)
+  const clearAllTasks = () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const allHouseholdTasks = householdId
+      ? items.filter(item => item.category === 'todo')
+      : [];
+    const allPersonalTasks = personalTasks;
+    const totalTasks = allHouseholdTasks.length + allPersonalTasks.length;
+
+    if (totalTasks === 0) return;
+
+    Alert.alert(
+      'Clear All Tasks',
+      `Are you sure you want to delete all ${totalTasks} tasks?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const batch = writeBatch(db);
+
+              // Delete all household tasks
+              allHouseholdTasks.forEach(item => {
+                batch.delete(doc(db, 'households', householdId, 'items', item.id));
+              });
+
+              // Delete all personal tasks
+              allPersonalTasks.forEach(task => {
+                batch.delete(doc(db, 'users', currentUser.uid, 'personalTasks', task.id));
+              });
+
+              await batch.commit();
+            } catch (error) {
+              console.error('Error clearing all tasks:', error);
+              Alert.alert('Error', 'Failed to clear tasks. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Clear completed activities
+  const clearCompletedActivities = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    // Get all activities that are in the past (completed = past date)
+    const now = new Date();
+    const completedHouseholdActivities = householdId
+      ? activities.filter(activity => new Date(`${activity.date}T${activity.time || '23:59'}`) < now)
+      : [];
+    const completedPersonalActivities = personalActivities.filter(
+      activity => new Date(`${activity.date}T${activity.time || '23:59'}`) < now
+    );
+
+    if (completedHouseholdActivities.length === 0 && completedPersonalActivities.length === 0) {
+      Alert.alert('No Past Activities', 'There are no past activities to clear.');
+      return;
+    }
+
+    try {
+      const batch = writeBatch(db);
+
+      // Delete completed household activities
+      completedHouseholdActivities.forEach(activity => {
+        batch.delete(doc(db, 'households', householdId, 'activities', activity.id));
+      });
+
+      // Delete completed personal activities
+      completedPersonalActivities.forEach(activity => {
+        batch.delete(doc(db, 'users', currentUser.uid, 'personalActivities', activity.id));
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error('Error clearing completed activities:', error);
+      Alert.alert('Error', 'Failed to clear activities. Please try again.');
+    }
+  };
+
+  // Clear all activities (with confirmation)
+  const clearAllActivities = () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const allHouseholdActivities = householdId ? activities : [];
+    const allPersonalActivities = personalActivities;
+    const totalActivities = allHouseholdActivities.length + allPersonalActivities.length;
+
+    if (totalActivities === 0) return;
+
+    Alert.alert(
+      'Clear All Activities',
+      `Are you sure you want to delete all ${totalActivities} activities?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const batch = writeBatch(db);
+
+              // Delete all household activities
+              allHouseholdActivities.forEach(activity => {
+                batch.delete(doc(db, 'households', householdId, 'activities', activity.id));
+              });
+
+              // Delete all personal activities
+              allPersonalActivities.forEach(activity => {
+                batch.delete(doc(db, 'users', currentUser.uid, 'personalActivities', activity.id));
+              });
+
+              await batch.commit();
+            } catch (error) {
+              console.error('Error clearing all activities:', error);
+              Alert.alert('Error', 'Failed to clear activities. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleReorderCategory = async (category, data) => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -3674,8 +4252,8 @@ export default function App() {
 
     setIsSearchingAddress(true);
     try {
-      // REPLACE 'YOUR_GOOGLE_API_KEY' WITH YOUR ACTUAL API KEY
-      const GOOGLE_API_KEY = 'AIzaSyDRmth4yf8fFc2Mplcm0RFmN4qsGzAf44M';
+      // Google Places API key from environment variables
+      const GOOGLE_API_KEY = GOOGLE_PLACES_API_KEY;
       
       console.log('Searching for:', query);
       
@@ -3767,7 +4345,7 @@ export default function App() {
   };
 
   const handleAddressSelect = async (suggestion, isActivity = false) => {
-    const GOOGLE_API_KEY = 'AIzaSyDRmth4yf8fFc2Mplcm0RFmN4qsGzAf44M';
+    const GOOGLE_API_KEY = GOOGLE_PLACES_API_KEY;
     
     // If this is for a restaurant (not activity), fetch full place details to get cuisine and price
     let restaurantName = suggestion.placeName || suggestion.name.split(',')[0];
@@ -4095,7 +4673,7 @@ export default function App() {
   };
 
   const fetchRestaurantDetails = async (restaurant) => {
-    const GOOGLE_API_KEY = 'AIzaSyDRmth4yf8fFc2Mplcm0RFmN4qsGzAf44M';
+    const GOOGLE_API_KEY = GOOGLE_PLACES_API_KEY;
     setLoadingRestaurantDetails(true);
     
     try {
@@ -5892,6 +6470,26 @@ export default function App() {
                 </View>
               )}
 
+              {/* Clear Buttons */}
+              {(overdue.length > 0 || today.length > 0 || upcoming.length > 0 || allCurrent.length > 0 || noDate.length > 0) && (
+                <View style={styles.clearGroceriesContainer}>
+                  <TouchableOpacity
+                    style={[styles.clearGroceriesButton, styles.clearCompletedButton]}
+                    onPress={todoFilter === 'tasks' ? clearCompletedTasks : clearCompletedActivities}
+                  >
+                    <Text style={styles.clearCompletedButtonText}>
+                      {todoFilter === 'tasks' ? 'Clear Completed' : 'Clear Past'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.clearGroceriesButton, styles.clearAllButton]}
+                    onPress={todoFilter === 'tasks' ? clearAllTasks : clearAllActivities}
+                  >
+                    <Text style={styles.clearAllButtonText}>Clear All</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               <View style={{ height: 100 }} />
             </ScrollView>
           )}
@@ -5922,21 +6520,26 @@ export default function App() {
       }).length;
 
       const renderGiftItem = (gift) => (
-        <TouchableOpacity
+        <View
           key={gift.id}
-          style={dynamicStyles.newGiftItem}
-          onPress={() => openEditForm(gift, 'gift')}
+          style={[dynamicStyles.newGiftItem, gift.completed && styles.giftItemPurchased]}
         >
-          <Gift size={16} color={themeColors.textMuted} />
-          <Text style={dynamicStyles.newGiftItemText}>{gift.idea}</Text>
+          <Gift size={16} color={gift.completed ? '#9ca3af' : themeColors.textMuted} />
+          <Text style={[dynamicStyles.newGiftItemText, gift.completed && styles.giftItemTextPurchased]}>
+            {gift.idea}
+          </Text>
           {gift.budget && (
-            <Text style={dynamicStyles.newGiftItemPrice}>${gift.budget}</Text>
+            <Text style={[dynamicStyles.newGiftItemPrice, gift.completed && styles.giftItemPricePurchased]}>
+              ${gift.budget}
+            </Text>
           )}
-        </TouchableOpacity>
+        </View>
       );
 
       const renderPersonCard = (person) => {
-        const personGifts = giftIdeas.filter(g => g.person === person.name);
+        const personGifts = giftIdeas
+          .filter(g => g.person === person.name)
+          .sort((a, b) => (a.completed === b.completed) ? 0 : a.completed ? 1 : -1);
         const avatarColor = getAvatarColor(person.name);
         let dateDisplay = '';
         let occasion = person.occasion || 'Birthday';
@@ -6087,7 +6690,11 @@ export default function App() {
     if (currentTab === 'calendar') {
       // Get all upcoming events sorted by date
       const getEventsForSelectedDate = () => {
-        const allEvents = [...activities, ...personalActivities];
+        const allEvents = [
+          ...activities,
+          ...personalActivities,
+          ...(showAppleCalendar ? appleCalendarEvents : [])
+        ];
         const selectedDateStr = selectedDate.toISOString().split('T')[0];
         return allEvents
           .filter(event => {
@@ -6107,7 +6714,11 @@ export default function App() {
 
       // Get dates that have events for showing dots
       const getDatesWithEvents = () => {
-        const allEvents = [...activities, ...personalActivities];
+        const allEvents = [
+          ...activities,
+          ...personalActivities,
+          ...(showAppleCalendar ? appleCalendarEvents : [])
+        ];
         const dateMap = {};
         allEvents.forEach(event => {
           if (event.date) {
@@ -6904,11 +7515,15 @@ export default function App() {
                 <Text style={dynamicStyles.emptyStateSubtext}>Tap the + button to add your first item</Text>
               </View>
             ) : (
-              <DraggableFlatList
+              // TEMPORARILY USING FlatList instead of DraggableFlatList - drag to reorder disabled
+              <FlatList
                 data={orderedIdeas}
-                onDragEnd={({ data }) => handleReorderCategory('ideas', data)}
+                // onDragEnd={({ data }) => handleReorderCategory('ideas', data)} // DISABLED: DraggableFlatList feature
                 keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item, drag, isActive }) => {
+                renderItem={({ item }) => {
+                  // Note: drag and isActive removed - DraggableFlatList features disabled
+                  const drag = () => {}; // Stub for compatibility
+                  const isActive = false; // Stub for compatibility
                   const handleDeleteIdea = () => {
                     Alert.alert(
                       'Delete Idea',
@@ -7152,10 +7767,19 @@ export default function App() {
             {item.category === 'groceries' && shouldShowPriceForItem(item) && typeof item.price === 'number' && (
               <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
             )}
+            {/* Store badge for groceries */}
+            {item.category === 'groceries' && item.storeId && getStoreById(item.storeId) && (
+              <View style={[styles.storeBadge, { backgroundColor: getStoreById(item.storeId).color + '20' }]}>
+                <View style={[styles.storeBadgeDot, { backgroundColor: getStoreById(item.storeId).color }]} />
+                <Text style={[styles.storeBadgeText, { color: getStoreById(item.storeId).color }]}>
+                  {getStoreById(item.storeId).name}
+                </Text>
+              </View>
+            )}
           </View>
         </TouchableOpacity>
       );
-      
+
       const allCategories = [...categoryOrder, ...Object.keys(groupedItems).filter(cat => !categoryOrder.includes(cat))];
       
       return (
@@ -7266,21 +7890,6 @@ export default function App() {
       return (
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: themeColors.background }}>
           <View style={dynamicStyles.container}>
-            {/* Shop Mode Selector */}
-            <View style={dynamicStyles.shopModeSelector}>
-              <TouchableOpacity
-                style={[dynamicStyles.shopModeButton, shopMode === 'grocery' && dynamicStyles.shopModeButtonActive]}
-                onPress={() => setShopMode('grocery')}
-              >
-                <Text style={[dynamicStyles.shopModeButtonText, shopMode === 'grocery' && dynamicStyles.shopModeButtonTextActive]}>Grocery</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[dynamicStyles.shopModeButton, shopMode === 'other' && dynamicStyles.shopModeButtonActive]}
-                onPress={() => setShopMode('other')}
-              >
-                <Text style={[dynamicStyles.shopModeButtonText, shopMode === 'other' && dynamicStyles.shopModeButtonTextActive]}>Other</Text>
-              </TouchableOpacity>
-            </View>
 
             <ScrollView style={dynamicStyles.content} contentContainerStyle={{ paddingBottom: 120 }}>
               {shopMode === 'grocery' ? (
@@ -7415,6 +8024,24 @@ export default function App() {
                     </View>
                   );
                 })
+              )}
+
+              {/* Clear Groceries Buttons */}
+              {totalItems > 0 && (
+                <View style={styles.clearGroceriesContainer}>
+                  <TouchableOpacity
+                    style={[styles.clearGroceriesButton, styles.clearCompletedButton]}
+                    onPress={clearCompletedGroceries}
+                  >
+                    <Text style={styles.clearCompletedButtonText}>Clear Completed</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.clearGroceriesButton, styles.clearAllButton]}
+                    onPress={clearAllGroceries}
+                  >
+                    <Text style={styles.clearAllButtonText}>Clear All</Text>
+                  </TouchableOpacity>
+                </View>
               )}
                 </>
               ) : (
@@ -9711,6 +10338,13 @@ export default function App() {
       fontSize: 14,
       color: themeColors.textSecondary,
     },
+    // Store Manager Modal
+    storeManagerModal: {
+      backgroundColor: themeColors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      maxHeight: '70%',
+    },
   });
 
   return (
@@ -10068,12 +10702,15 @@ export default function App() {
                   {/* Subtasks Section */}
                   {!isActivity && item.subtasks && item.subtasks.length > 0 && expandedTasks[item.id] && (
                     <View style={styles.subtasksContainer}>
-                      <DraggableFlatList
+                      {/* TEMPORARILY USING FlatList instead of DraggableFlatList */}
+                      <FlatList
                         data={[...item.subtasks].sort((a, b) => (a.order || 0) - (b.order || 0))}
-                        onDragEnd={({ data }) => reorderSubtasks(item.id, data)}
+                        // onDragEnd={({ data }) => reorderSubtasks(item.id, data)} // DISABLED
                         keyExtractor={(subtask) => subtask.id.toString()}
                         scrollEnabled={false}
-                        renderItem={({ item: subtask, drag, isActive: isSubtaskActive }) => {
+                        renderItem={({ item: subtask }) => {
+                          const drag = () => {}; // Stub
+                          const isSubtaskActive = false; // Stub
                           const renderSubtaskRightActions = () => {
                             return (
                               <View style={styles.swipeActionContainer}>
@@ -10274,7 +10911,8 @@ export default function App() {
     ) : todoFilter === 'tasks' ? (
       // Filter: Tasks - Draggable list sorted by priority
       <View style={dynamicStyles.content}>
-        <DraggableFlatList
+        {/* TEMPORARILY USING FlatList instead of DraggableFlatList */}
+        <FlatList
           data={(() => {
             // Create a copy and sort by priority
             const sorted = [...filteredItems].sort((a, b) => {
@@ -10295,9 +10933,11 @@ export default function App() {
             });
             return sorted;
           })()}
-          onDragEnd={({ data }) => handleReorderItems(data)}
+          // onDragEnd={({ data }) => handleReorderItems(data)} // DISABLED
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item, drag, isActive }) => {
+          renderItem={({ item }) => {
+            const drag = () => {}; // Stub
+            const isActive = false; // Stub
             const isPersonal = item.isPersonal;
             const editType = isPersonal ? 'personalTask' : 'item';
             const currentUser = auth.currentUser;
@@ -10458,12 +11098,15 @@ export default function App() {
                 {/* Subtasks Section */}
                 {item.subtasks && item.subtasks.length > 0 && expandedTasks[item.id] && (
                   <View style={styles.subtasksContainer}>
-                    <DraggableFlatList
+                    {/* TEMPORARILY USING FlatList instead of DraggableFlatList */}
+                    <FlatList
                       data={[...item.subtasks].sort((a, b) => (a.order || 0) - (b.order || 0))}
-                      onDragEnd={({ data }) => reorderSubtasks(item.id, data)}
+                      // onDragEnd={({ data }) => reorderSubtasks(item.id, data)} // DISABLED
                       keyExtractor={(subtask) => subtask.id.toString()}
                       scrollEnabled={false}
-                      renderItem={({ item: subtask, drag, isActive: isSubtaskActive }) => {
+                      renderItem={({ item: subtask }) => {
+                        const drag = () => {}; // Stub
+                        const isSubtaskActive = false; // Stub
                         const renderSubtaskRightActions = () => {
                           return (
                             <View style={styles.swipeActionContainer}>
@@ -10634,8 +11277,24 @@ export default function App() {
             );
           }}
           contentContainerStyle={{ paddingBottom: 16 }}
+          ListFooterComponent={filteredItems.length > 0 ? () => (
+            <View style={styles.clearGroceriesContainer}>
+              <TouchableOpacity
+                style={[styles.clearGroceriesButton, styles.clearCompletedButton]}
+                onPress={clearCompletedTasks}
+              >
+                <Text style={styles.clearCompletedButtonText}>Clear Completed</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.clearGroceriesButton, styles.clearAllButton]}
+                onPress={clearAllTasks}
+              >
+                <Text style={styles.clearAllButtonText}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         />
-        
+
         {filteredItems.length === 0 && (
           <View style={styles.emptyState}>
             <Check size={48} color={themeColors.textSecondary} />
@@ -10647,11 +11306,14 @@ export default function App() {
     ) : (
       // Filter: Activities - Draggable list
       <View style={dynamicStyles.content}>
-        <DraggableFlatList
+        {/* TEMPORARILY USING FlatList instead of DraggableFlatList */}
+        <FlatList
           data={getFilteredActivities()}
-          onDragEnd={({ data }) => handleReorderActivities(data)}
+          // onDragEnd={({ data }) => handleReorderActivities(data)} // DISABLED
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item, drag, isActive }) => {
+          renderItem={({ item }) => {
+            const drag = () => {}; // Stub
+            const isActive = false; // Stub
             const isPersonal = item.isPersonal;
             const editType = isPersonal ? 'personalActivity' : 'activity';
             return (
@@ -10698,8 +11360,24 @@ export default function App() {
             );
           }}
           contentContainerStyle={{ paddingBottom: 16 }}
+          ListFooterComponent={getFilteredActivities().length > 0 ? () => (
+            <View style={styles.clearGroceriesContainer}>
+              <TouchableOpacity
+                style={[styles.clearGroceriesButton, styles.clearCompletedButton]}
+                onPress={clearCompletedActivities}
+              >
+                <Text style={styles.clearCompletedButtonText}>Clear Past</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.clearGroceriesButton, styles.clearAllButton]}
+                onPress={clearAllActivities}
+              >
+                <Text style={styles.clearAllButtonText}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         />
-        
+
         {getFilteredActivities().length === 0 && (
           <View style={styles.emptyState}>
             <Calendar size={48} color={themeColors.textSecondary} />
@@ -10721,6 +11399,56 @@ export default function App() {
     </View>
   </View>
 )}
+
+{/* Store filter chips for groceries */}
+{activeTab === 'groceries' && stores.length > 0 && (
+  <View style={styles.storeFilterContainer}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.storeFilterScroll}
+      contentContainerStyle={{ paddingRight: 16 }}
+    >
+      {/* All stores chip */}
+      <TouchableOpacity
+        style={[
+          styles.storeFilterChip,
+          selectedStoreFilter === 'all' && styles.storeFilterChipActive
+        ]}
+        onPress={() => setSelectedStoreFilter('all')}
+      >
+        <Text style={[
+          styles.storeFilterChipText,
+          selectedStoreFilter === 'all' && styles.storeFilterChipTextActive
+        ]}>
+          All Stores
+        </Text>
+      </TouchableOpacity>
+
+      {/* Individual store chips */}
+      {stores.map(store => (
+        <TouchableOpacity
+          key={store.id}
+          style={[
+            styles.storeFilterChip,
+            selectedStoreFilter === store.id && { backgroundColor: store.color, borderColor: store.color }
+          ]}
+          onPress={() => setSelectedStoreFilter(selectedStoreFilter === store.id ? 'all' : store.id)}
+        >
+          <View style={[styles.storeFilterColorDot, { backgroundColor: store.color }]} />
+          <Text style={[
+            styles.storeFilterChipText,
+            selectedStoreFilter === store.id && styles.storeFilterChipTextActive
+          ]}>
+            {store.name}
+          </Text>
+        </TouchableOpacity>
+      ))}
+
+    </ScrollView>
+  </View>
+)}
+
 {activeTab === 'ideas' && (
   <>
     <View style={dynamicStyles.ideasSubheader}>
@@ -10932,7 +11660,11 @@ export default function App() {
           />
           <View style={dynamicStyles.formModalContent}>
             <View style={dynamicStyles.formModalHeader}>
-              <Text style={dynamicStyles.modalTitle}>{isEditMode ? 'Edit' : 'Add'} {addItemType === 'activities' ? 'Activity' : addItemType === 'gifts' ? 'Gift Idea' : addItemType === 'wishlist' ? 'Wishlist Item' : addItemType === 'otherShop' ? 'Shopping Item' : 'Item'}</Text>
+              <Text style={dynamicStyles.modalTitle}>
+                {showGroceryPastePreview ? `Preview (${groceryPastePreview.length} items)` :
+                 groceryPasteMode ? 'Paste Grocery List' :
+                 isEditMode ? 'Edit' : 'Add'} {!groceryPasteMode && !showGroceryPastePreview && (addItemType === 'activities' ? 'Activity' : addItemType === 'gifts' ? 'Gift Idea' : addItemType === 'wishlist' ? 'Wishlist Item' : addItemType === 'otherShop' ? 'Shopping Item' : 'Item')}
+              </Text>
               <TouchableOpacity onPress={() => {
                 setShowAddForm(false);
                 setIsEditMode(false);
@@ -10940,13 +11672,139 @@ export default function App() {
                 // Clear address suggestions when closing form
                 setShowAddressSuggestions(false);
                 setAddressSuggestions([]);
+                // Reset paste mode
+                setGroceryPasteMode(false);
+                setGroceryPasteText('');
+                setGroceryPastePreview([]);
+                setShowGroceryPastePreview(false);
+                setPasteStoreId(null);
               }}>
                 <X size={24} color={themeColors.textMuted} />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={dynamicStyles.formModalForm} keyboardShouldPersistTaps="handled">
-              {addItemType === 'gifts' ? (
+              {/* Grocery Paste Preview Mode */}
+              {addItemType === 'groceries' && showGroceryPastePreview ? (
+                <View style={styles.pastePreviewContainer}>
+                  {/* Store info if selected */}
+                  {pasteStoreId && getStoreById(pasteStoreId) && (
+                    <View style={styles.pasteStoreInfo}>
+                      <View style={[styles.storeFilterColorDot, { backgroundColor: getStoreById(pasteStoreId).color }]} />
+                      <Text style={[styles.pasteStoreText, { color: themeColors.text }]}>
+                        All items → {getStoreById(pasteStoreId).name}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Preview list */}
+                  <View style={styles.pastePreviewList}>
+                    {groceryPastePreview.map((item, index) => (
+                      <View key={index} style={[styles.pastePreviewItem, { borderBottomColor: themeColors.border }]}>
+                        <Text style={styles.pastePreviewEmoji}>{getGroceryCategoryEmoji(item.subcategory)}</Text>
+                        <Text style={[styles.pastePreviewTitle, { color: themeColors.text }]}>{item.title}</Text>
+                        <Text style={[styles.pastePreviewCategory, { color: themeColors.textSecondary }]}>
+                          {item.subcategory.charAt(0).toUpperCase() + item.subcategory.slice(1)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Action buttons */}
+                  <View style={styles.pastePreviewActions}>
+                    <TouchableOpacity
+                      style={[styles.pasteActionButton, styles.pasteBackButton]}
+                      onPress={() => setShowGroceryPastePreview(false)}
+                    >
+                      <Text style={styles.pasteBackButtonText}>Back</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.pasteActionButton, styles.pasteCreateButton]}
+                      onPress={bulkCreateGroceryItems}
+                    >
+                      <Text style={styles.pasteCreateButtonText}>Create {groceryPastePreview.length} Items</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : addItemType === 'groceries' && groceryPasteMode ? (
+                /* Grocery Paste Input Mode */
+                <View style={styles.pasteModeContainer}>
+                  {/* Store selector */}
+                  {stores.length > 0 && (
+                    <View style={styles.pasteStoreSelector}>
+                      <Text style={[styles.inputLabel, { color: themeColors.text, marginBottom: 8 }]}>
+                        Store for all items (optional)
+                      </Text>
+                      <View style={styles.storePillsContainer}>
+                        {stores.map(store => (
+                          <TouchableOpacity
+                            key={store.id}
+                            style={[
+                              styles.storePill,
+                              pasteStoreId === store.id && { backgroundColor: store.color, borderColor: store.color }
+                            ]}
+                            onPress={() => setPasteStoreId(pasteStoreId === store.id ? null : store.id)}
+                          >
+                            <View style={[styles.storePillDot, { backgroundColor: store.color }]} />
+                            <Text style={[
+                              styles.storePillText,
+                              pasteStoreId === store.id && styles.storePillTextActive
+                            ]}>
+                              {store.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Multiline text input */}
+                  <TextInput
+                    style={[dynamicStyles.formInput, styles.pasteTextInput]}
+                    placeholder="Paste your list here...&#10;(one item per line)"
+                    placeholderTextColor={themeColors.textMuted}
+                    value={groceryPasteText}
+                    onChangeText={setGroceryPasteText}
+                    multiline
+                    numberOfLines={8}
+                    textAlignVertical="top"
+                  />
+
+                  {/* Action buttons */}
+                  <View style={styles.pastePreviewActions}>
+                    <TouchableOpacity
+                      style={[styles.pasteActionButton, styles.pasteBackButton]}
+                      onPress={() => {
+                        setGroceryPasteMode(false);
+                        setGroceryPasteText('');
+                        setPasteStoreId(null);
+                      }}
+                    >
+                      <Text style={styles.pasteBackButtonText}>Back to Single Item</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.pasteActionButton,
+                        styles.pasteCreateButton,
+                        !groceryPasteText.trim() && styles.pasteButtonDisabled
+                      ]}
+                      onPress={() => {
+                        const parsed = parseGroceryPasteText(groceryPasteText);
+                        if (parsed.length > 0) {
+                          setGroceryPastePreview(parsed);
+                          setShowGroceryPastePreview(true);
+                        }
+                      }}
+                      disabled={!groceryPasteText.trim()}
+                    >
+                      <Text style={[
+                        styles.pasteCreateButtonText,
+                        !groceryPasteText.trim() && { opacity: 0.5 }
+                      ]}>Preview</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : addItemType === 'gifts' ? (
                 <>
                   <TextInput
                     style={dynamicStyles.formInput}
@@ -11179,12 +12037,32 @@ export default function App() {
                     </View>
                   </>
                 )}
+                {/* Paste Multiple Items link for groceries */}
+                {addItemType === 'groceries' && !isEditMode && (
+                  <TouchableOpacity
+                    style={styles.pasteMultipleLink}
+                    onPress={() => setGroceryPasteMode(true)}
+                  >
+                    <Text style={[styles.pasteMultipleLinkText, { color: themeColors.accent }]}>
+                      📋 Paste Multiple Items
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TextInput
                   style={dynamicStyles.formInput}
                   placeholder={addItemType === 'restaurants' ? "Restaurant name" : "Item title"}
                   placeholderTextColor={themeColors.textMuted}
                   value={newItem.title}
-                  onChangeText={(text) => setNewItem({...newItem, title: text})}
+                  onChangeText={(text) => {
+                    setNewItem({...newItem, title: text});
+                    // Check for smart store suggestion when adding groceries
+                    if (addItemType === 'groceries' && text.trim()) {
+                      const suggested = getSuggestedStore(text);
+                      setSuggestedStoreId(suggested);
+                    } else if (addItemType === 'groceries') {
+                      setSuggestedStoreId(null);
+                    }
+                  }}
                 />
 
                 </>
@@ -11241,15 +12119,47 @@ export default function App() {
     </View>
   </>
 )}
-{addItemType === 'groceries' && tabSettings.groceries?.showPrices !== false && (
-  <TextInput
-    style={dynamicStyles.formInput}
-    placeholder="Price (optional)"
-    placeholderTextColor={themeColors.textMuted}
-    value={newItem.price}
-    onChangeText={(text) => setNewItem({...newItem, price: text})}
-    keyboardType="decimal-pad"
-  />
+
+{/* Store picker for groceries */}
+{addItemType === 'groceries' && stores.length > 0 && (
+  <View style={styles.storePickerContainer}>
+    <Text style={[styles.inputLabel, { color: themeColors.text, marginBottom: 8 }]}>Store (optional)</Text>
+
+    {/* Smart suggestion banner */}
+    {suggestedStoreId && !selectedStoreId && getStoreById(suggestedStoreId) && (
+      <TouchableOpacity
+        style={styles.storeSuggestionBanner}
+        onPress={() => setSelectedStoreId(suggestedStoreId)}
+      >
+        <Lightbulb size={16} color="#f59e0b" />
+        <Text style={styles.storeSuggestionText}>
+          Usually bought at {getStoreById(suggestedStoreId)?.name}
+        </Text>
+        <Text style={styles.storeSuggestionAction}>Tap to apply</Text>
+      </TouchableOpacity>
+    )}
+
+    <View style={styles.storePillsContainer}>
+      {stores.map(store => (
+        <TouchableOpacity
+          key={store.id}
+          style={[
+            styles.storePill,
+            selectedStoreId === store.id && { backgroundColor: store.color, borderColor: store.color }
+          ]}
+          onPress={() => setSelectedStoreId(selectedStoreId === store.id ? null : store.id)}
+        >
+          <View style={[styles.storePillDot, { backgroundColor: store.color }]} />
+          <Text style={[
+            styles.storePillText,
+            selectedStoreId === store.id && styles.storePillTextActive
+          ]}>
+            {store.name}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
 )}
 
 {addItemType === 'wishlist' && (
@@ -12405,7 +13315,9 @@ export default function App() {
           />
           <View style={dynamicStyles.personProfileContent}>
             {profilePerson && (() => {
-              const personGifts = giftIdeas.filter(g => g.person === profilePerson.name);
+              const personGifts = giftIdeas
+                .filter(g => g.person === profilePerson.name)
+                .sort((a, b) => (a.completed === b.completed) ? 0 : a.completed ? 1 : -1);
               const avatarColors = ['#c084fc', '#4ade80', '#60a5fa', '#f97316', '#ec4899', '#facc15'];
               const getAvatarColor = (name) => {
                 let hash = 0;
@@ -12490,25 +13402,55 @@ export default function App() {
                       <Text style={dynamicStyles.personProfileEmptyText}>No gift ideas yet</Text>
                     ) : (
                       personGifts.map(gift => (
-                        <TouchableOpacity
+                        <Swipeable
                           key={gift.id}
-                          style={dynamicStyles.personProfileGiftItem}
-                          onPress={() => {
-                            setShowPersonProfile(false);
-                            openEditForm(gift, 'gift');
-                          }}
-                        >
-                          <Gift size={18} color={themeColors.accentPrimary} />
-                          <View style={dynamicStyles.personProfileGiftInfo}>
-                            <Text style={dynamicStyles.personProfileGiftName}>{gift.idea}</Text>
-                            {gift.notes && (
-                              <Text style={dynamicStyles.personProfileGiftNotes} numberOfLines={1}>{gift.notes}</Text>
-                            )}
-                          </View>
-                          {gift.budget && (
-                            <Text style={dynamicStyles.personProfileGiftPrice}>${gift.budget}</Text>
+                          renderRightActions={() => (
+                            <View style={styles.swipeActionContainer}>
+                              <View style={styles.swipeDeleteButton}>
+                                <Trash2 size={20} color="#fff" />
+                                <Text style={styles.swipeDeleteText}>Delete</Text>
+                              </View>
+                            </View>
                           )}
-                        </TouchableOpacity>
+                          onSwipeableRightOpen={() => deleteItem(gift.id, 'gift')}
+                          rightThreshold={80}
+                          overshootRight={false}
+                        >
+                          <TouchableOpacity
+                            style={[dynamicStyles.personProfileGiftItem, gift.completed && styles.giftItemPurchased]}
+                            onPress={() => {
+                              setShowPersonProfile(false);
+                              openEditForm(gift, 'gift');
+                            }}
+                          >
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                toggleComplete(gift.id, 'gift');
+                              }}
+                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                              <View style={[styles.giftCheckbox, gift.completed && styles.giftCheckboxChecked]}>
+                                {gift.completed && <Check size={12} color="#fff" />}
+                              </View>
+                            </TouchableOpacity>
+                            <View style={dynamicStyles.personProfileGiftInfo}>
+                              <Text style={[dynamicStyles.personProfileGiftName, gift.completed && styles.giftItemTextPurchased]}>
+                                {gift.idea}
+                              </Text>
+                              {gift.notes && (
+                                <Text style={[dynamicStyles.personProfileGiftNotes, gift.completed && { color: '#9ca3af' }]} numberOfLines={1}>
+                                  {gift.notes}
+                                </Text>
+                              )}
+                            </View>
+                            {gift.budget && (
+                              <Text style={[dynamicStyles.personProfileGiftPrice, gift.completed && styles.giftItemPricePurchased]}>
+                                ${gift.budget}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        </Swipeable>
                       ))
                     )}
                   </View>
@@ -12660,6 +13602,17 @@ export default function App() {
           onUpdateTabSettings={updateTabSettings}
           tabOrder={tabOrder}
           onTabOrderChange={handleTabOrderChange}
+          stores={stores}
+          onAddStore={addStore}
+          onUpdateStore={updateStore}
+          onDeleteStore={deleteStore}
+          newStoreName={newStoreName}
+          setNewStoreName={setNewStoreName}
+          newStoreColor={newStoreColor}
+          setNewStoreColor={setNewStoreColor}
+          editingStore={editingStore}
+          setEditingStore={setEditingStore}
+          STORE_COLORS={STORE_COLORS}
         />
       </Modal>
 
@@ -16609,6 +17562,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#22c55e',
   },
+  // Gift item purchased states
+  giftCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  giftCheckboxChecked: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  giftItemPurchased: {
+    opacity: 0.6,
+  },
+  giftItemTextPurchased: {
+    textDecorationLine: 'line-through',
+    color: '#9ca3af',
+  },
+  giftItemPricePurchased: {
+    textDecorationLine: 'line-through',
+    color: '#9ca3af',
+  },
 
   // Groceries screen
   groceryCard: {
@@ -17459,5 +18437,342 @@ const styles = StyleSheet.create({
   },
   recipeTagButtonTextActive: {
     color: '#ffffff',
+  },
+
+  // ==================== Store Tags Styles ====================
+  storeFormSection: {
+    marginBottom: 24,
+  },
+  storeColorPicker: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  storeColorOption: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storeColorOptionSelected: {
+    borderWidth: 3,
+    borderColor: '#1f2937',
+  },
+  storeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  storeAddButton: {
+    backgroundColor: '#10B981',
+  },
+  storeAddButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  storeSaveButton: {
+    backgroundColor: '#3B82F6',
+    flex: 1,
+  },
+  storeSaveButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  storeCancelButton: {
+    backgroundColor: '#f3f4f6',
+    flex: 1,
+  },
+  storeCancelButtonText: {
+    color: '#6b7280',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  storeButtonDisabled: {
+    opacity: 0.5,
+  },
+  storeEditButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  storeListSection: {
+    marginTop: 8,
+  },
+  storeListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  storeListColorDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  storeListName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  storeListAction: {
+    padding: 8,
+  },
+  storeEmptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 12,
+  },
+  storeEmptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  // Store filter chips for groceries tab
+  storeFilterContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  storeFilterScroll: {
+    flexGrow: 0,
+  },
+  storeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 999,
+    marginRight: 8,
+    gap: 6,
+  },
+  storeFilterChipActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  storeFilterChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  storeFilterChipTextActive: {
+    color: '#ffffff',
+  },
+  storeFilterColorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  manageStoresButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Store badge on grocery cards
+  storeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    marginLeft: 8,
+  },
+  storeBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  storeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  // Store picker in form
+  storePickerContainer: {
+    marginBottom: 16,
+  },
+  storePillsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  storePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 20,
+    gap: 6,
+  },
+  storePillActive: {
+    borderWidth: 2,
+  },
+  storePillDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  storePillText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  storePillTextActive: {
+    color: '#ffffff',
+  },
+  storeSuggestionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  storeSuggestionText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400e',
+  },
+  storeSuggestionAction: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#f59e0b',
+  },
+  // Paste Multiple Items styles
+  pasteMultipleLink: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    marginBottom: 12,
+  },
+  pasteMultipleLinkText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  pasteModeContainer: {
+    flex: 1,
+  },
+  pasteStoreSelector: {
+    marginBottom: 16,
+  },
+  pasteTextInput: {
+    minHeight: 160,
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  pastePreviewActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  pasteActionButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  pasteBackButton: {
+    backgroundColor: '#f3f4f6',
+  },
+  pasteBackButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  pasteCreateButton: {
+    backgroundColor: '#f59e0b',
+  },
+  pasteCreateButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  pasteButtonDisabled: {
+    backgroundColor: '#d1d5db',
+  },
+  pastePreviewContainer: {
+    flex: 1,
+  },
+  pasteStoreInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  pasteStoreText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  pastePreviewList: {
+    marginBottom: 16,
+  },
+  pastePreviewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    gap: 10,
+  },
+  pastePreviewEmoji: {
+    fontSize: 18,
+  },
+  pastePreviewTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  pastePreviewCategory: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  // Clear Groceries buttons
+  clearGroceriesContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  clearGroceriesButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  clearCompletedButton: {
+    backgroundColor: 'transparent',
+    borderColor: '#6b7280',
+  },
+  clearCompletedButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  clearAllButton: {
+    backgroundColor: 'transparent',
+    borderColor: '#ef4444',
+  },
+  clearAllButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#ef4444',
   },
 });

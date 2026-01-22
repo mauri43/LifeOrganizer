@@ -9,6 +9,8 @@ module.exports = function(api) {
         safe: false,
         allowUndefined: true,
       }],
+      // TEMPORARILY DISABLED: causes crash in Expo Go with forced New Architecture
+      // 'react-native-reanimated/plugin',
     ],
   };
 };

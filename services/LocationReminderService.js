@@ -61,8 +61,8 @@ class LocationReminderService {
         return false;
       }
 
-      // Configure notifications
-      await this.configureNotifications();
+      // Note: Notification handler is set once in services/notificationsHandler.js
+      // to prevent "runtime not ready" crashes from duplicate registration
 
       // Start background location tracking if enabled
       if (this.settings.enabled && this.geofences.length > 0) {
@@ -107,17 +107,6 @@ class LocationReminderService {
       console.error('Error requesting permissions:', error);
       return false;
     }
-  }
-
-  // Configure notification handler
-  async configureNotifications() {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    });
   }
 
   // Load settings from storage
@@ -451,18 +440,32 @@ export const locationReminderService = new LocationReminderService();
 // CRITICAL: Define the background task at MODULE LEVEL (not inside a method)
 // This is required by Expo's TaskManager - tasks must be defined in the outermost scope
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-  if (error) {
-    console.error('Background location error:', error);
-    return;
-  }
-  if (data) {
-    const { locations } = data;
-    if (locations && locations.length > 0 && serviceInstance) {
-      // Reload settings and geofences from storage since background task runs in separate context
-      await serviceInstance.loadSettings();
-      await serviceInstance.loadGeofences();
-      await serviceInstance.checkGeofences(locations[0].coords);
+  // Wrap everything in try/catch to prevent "runtime not ready" crashes
+  try {
+    if (error) {
+      console.error('Background location error:', error);
+      return;
     }
+
+    // Early return if service not initialized or no data
+    if (!serviceInstance || !data) {
+      return;
+    }
+
+    const { locations } = data;
+    if (!locations || locations.length === 0) {
+      return;
+    }
+
+    // Reload settings and geofences from storage since background task runs in separate context
+    await serviceInstance.loadSettings();
+    await serviceInstance.loadGeofences();
+
+    // Check geofences with loaded data
+    await serviceInstance.checkGeofences(locations[0].coords);
+  } catch (e) {
+    // Silently catch errors to prevent crashes in background context
+    console.error('Background task error:', e);
   }
 });
 
