@@ -8,6 +8,9 @@ import {
   ScrollView,
   Switch,
   Modal,
+  FlatList,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -33,10 +36,15 @@ import {
   ChevronDown,
   BookOpen,
   Bell,
+  Plus,
+  Store,
+  Trash2,
+  Edit3,
 } from 'lucide-react-native';
 import LocationSettings from './components/LocationSettings';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import DraggableFlatList from 'react-native-draggable-flatlist';
+// TEMPORARILY DISABLED: react-native-draggable-flatlist crashes in Expo Go with New Architecture
+// import DraggableFlatList from 'react-native-draggable-flatlist';
 import { Picker } from '@react-native-picker/picker';
 import { getThemeColors } from './theme';
 
@@ -98,6 +106,17 @@ export default function SettingsScreen({
   onUpdateTabSettings,
   tabOrder = DEFAULT_TAB_ORDER,
   onTabOrderChange,
+  stores = [],
+  onAddStore,
+  onUpdateStore,
+  onDeleteStore,
+  newStoreName = '',
+  setNewStoreName,
+  newStoreColor = '#10B981',
+  setNewStoreColor,
+  editingStore = null,
+  setEditingStore,
+  STORE_COLORS = [],
 }) {
   const [theme, setTheme] = useState(themeProp);
   const [tabVisibility, setTabVisibility] = useState(DEFAULT_TAB_VISIBILITY);
@@ -414,6 +433,40 @@ export default function SettingsScreen({
       color: themeColors.text,
       fontSize: 20,
     },
+    // Store management dynamic styles
+    storeInput: {
+      backgroundColor: themeColors.surface,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      padding: 12,
+      fontSize: 16,
+      color: themeColors.text,
+    },
+    storeItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: themeColors.surface,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      padding: 12,
+    },
+    storeItemName: {
+      fontSize: 16,
+      color: themeColors.text,
+      fontWeight: '500',
+    },
+    emptyStoresText: {
+      fontSize: 16,
+      color: themeColors.textSecondary,
+      fontWeight: '500',
+    },
+    emptyStoresSubtext: {
+      fontSize: 14,
+      color: themeColors.textMuted,
+    },
   });
 
   const tabDisplayNames = {
@@ -606,22 +659,105 @@ export default function SettingsScreen({
       case 'groceries':
         return (
           <View style={styles.section}>
-            <Text style={dynamicStyles.sectionTitle}>Groceries Tab</Text>
+            <Text style={dynamicStyles.sectionTitle}>Manage Stores</Text>
             <Text style={dynamicStyles.sectionDescription}>
-              Control whether grocery items include pricing information.
+              Add stores to organize your grocery list by where you shop.
             </Text>
-            <View style={dynamicStyles.settingItem}>
-              <View style={styles.settingLeft}>
-                <DollarSign size={20} color="#10B981" />
-                <Text style={dynamicStyles.settingLabel}>Show Prices</Text>
-              </View>
-              <Switch
-                value={localTabSettings.groceries?.showPrices !== false}
-                onValueChange={(value) => handleTabSettingToggle('groceries', 'showPrices', value)}
-                trackColor={{ false: themeColors.border, true: themeColors.accent }}
-                thumbColor={localTabSettings.groceries?.showPrices !== false ? '#fff' : '#f5f5f4'}
+
+            {/* Add New Store */}
+            <View style={styles.storeFormRow}>
+              <TextInput
+                style={[dynamicStyles.storeInput, { flex: 1 }]}
+                placeholder={editingStore ? "Edit store name" : "New store name"}
+                placeholderTextColor={themeColors.textMuted}
+                value={newStoreName}
+                onChangeText={setNewStoreName}
               />
+              <TouchableOpacity
+                style={[styles.storeAddButton, { backgroundColor: newStoreColor }]}
+                onPress={() => {
+                  if (editingStore) {
+                    onUpdateStore && onUpdateStore();
+                  } else {
+                    onAddStore && onAddStore();
+                  }
+                }}
+              >
+                {editingStore ? (
+                  <Check size={18} color="#fff" />
+                ) : (
+                  <Plus size={18} color="#fff" />
+                )}
+              </TouchableOpacity>
             </View>
+
+            {/* Color Picker */}
+            <View style={styles.storeColorPicker}>
+              {STORE_COLORS.map(color => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.storeColorOption,
+                    { backgroundColor: color },
+                    newStoreColor === color && styles.storeColorOptionSelected
+                  ]}
+                  onPress={() => setNewStoreColor && setNewStoreColor(color)}
+                />
+              ))}
+            </View>
+
+            {/* Store List */}
+            {stores.length > 0 && (
+              <View style={styles.storeList}>
+                {stores.map(store => (
+                  <View key={store.id} style={dynamicStyles.storeItem}>
+                    <View style={styles.storeItemLeft}>
+                      <View style={[styles.storeColorDot, { backgroundColor: store.color }]} />
+                      <Text style={dynamicStyles.storeItemName}>{store.name}</Text>
+                    </View>
+                    <View style={styles.storeItemActions}>
+                      <TouchableOpacity
+                        style={styles.storeActionButton}
+                        onPress={() => {
+                          setEditingStore && setEditingStore(store);
+                          setNewStoreName && setNewStoreName(store.name);
+                          setNewStoreColor && setNewStoreColor(store.color);
+                        }}
+                      >
+                        <Edit3 size={16} color={themeColors.textSecondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.storeActionButton}
+                        onPress={() => onDeleteStore && onDeleteStore(store.id)}
+                      >
+                        <Trash2 size={16} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {stores.length === 0 && (
+              <View style={styles.emptyStores}>
+                <Store size={32} color={themeColors.textMuted} />
+                <Text style={dynamicStyles.emptyStoresText}>No stores yet</Text>
+                <Text style={dynamicStyles.emptyStoresSubtext}>Add stores like Costco, Whole Foods, etc.</Text>
+              </View>
+            )}
+
+            {editingStore && (
+              <TouchableOpacity
+                style={styles.cancelEditButton}
+                onPress={() => {
+                  setEditingStore && setEditingStore(null);
+                  setNewStoreName && setNewStoreName('');
+                  setNewStoreColor && setNewStoreColor('#10B981');
+                }}
+              >
+                <Text style={styles.cancelEditText}>Cancel Edit</Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
       case 'locationReminders':
@@ -717,21 +853,15 @@ export default function SettingsScreen({
                 <Text style={dynamicStyles.sectionDescription}>
                   Drag to reorder tabs, toggle visibility, or tap for more settings
                 </Text>
-                <DraggableFlatList
+                {/* TEMPORARILY USING FlatList instead of DraggableFlatList - drag to reorder disabled */}
+                <FlatList
                   data={localTabOrder.filter(tab => tab === 'today' || tabLabels[tab])}
                   keyExtractor={(item) => item}
                   scrollEnabled={false}
-                  onDragEnd={({ data }) => {
-                    const normalized = [
-                      ...data,
-                      ...localTabOrder.filter(tab => !data.includes(tab)),
-                    ];
-                    setLocalTabOrder(normalized);
-                    if (onTabOrderChange) {
-                      onTabOrderChange(normalized);
-                    }
-                  }}
-                  renderItem={({ item: tab, drag, isActive }) => {
+                  renderItem={({ item: tab }) => {
+                    // Note: drag and isActive removed - DraggableFlatList features disabled
+                    const drag = () => {}; // Stub for compatibility
+                    const isActive = false; // Stub for compatibility
                     const isToday = tab === 'today';
                     const IconComponent = tabOrderIconMap[tab] || List;
                     const isVisible = isToday ? true : tabVisibility[tab] !== false;
@@ -745,13 +875,9 @@ export default function SettingsScreen({
                           isActive && styles.tabOrderItemActive,
                         ]}
                       >
-                        <TouchableOpacity
-                          onPressIn={drag}
-                          activeOpacity={0.7}
-                          style={styles.dragHandle}
-                        >
-                          <GripVertical size={18} color={themeColors.textSecondary} />
-                        </TouchableOpacity>
+                        <View style={styles.dragHandle}>
+                          <GripVertical size={18} color={themeColors.textMuted} />
+                        </View>
                         <TouchableOpacity
                           style={styles.tabVisibilityContent}
                           activeOpacity={0.8}
@@ -1073,6 +1199,73 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  // Store management styles
+  storeFormRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+  },
+  storeAddButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storeColorPicker: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  storeColorOption: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  storeColorOptionSelected: {
+    borderColor: '#fff',
+  },
+  storeList: {
+    marginTop: 20,
+    gap: 8,
+  },
+  storeItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  storeColorDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  storeItemActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  storeActionButton: {
+    padding: 8,
+  },
+  emptyStores: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  cancelEditButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  cancelEditText: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 
